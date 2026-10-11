@@ -1,0 +1,45 @@
+﻿{
+  "expo": {
+    "name": "Mi Platica",
+    "slug": "mi-platica",
+    "version": "2.18.1",
+    "orientation": "portrait",
+    "scheme": "miplatica",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.finzen.app",
+      "infoPlist": { "UIBackgroundModes": [] }
+    },
+    "android": {
+      "package": "com.finzen.app",
+      "versionCode": 27,
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": ["SCHEDULE_EXACT_ALARM", "POST_NOTIFICATIONS", "VIBRATE"],
+      "blockedPermissions": ["android.permission.INTERNET"]
+    },
+    "web": { "favicon": "./assets/favicon.png" },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1CBBCE"
+        }
+      ]
+    ],
+    "extra": { "offlineOnly": true }
+  }
+}

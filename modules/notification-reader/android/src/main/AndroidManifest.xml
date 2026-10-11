@@ -1,0 +1,38 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!--
+      Servicio que lee las notificaciones de OTRAS apps (el banco, Nequi,
+      Google Wallet) para detectar movimientos.
+
+      Android lo protege con un permiso especial que SOLO el usuario puede
+      conceder a mano en Ajustes > Acceso a notificaciones. Ninguna app
+      puede activarlo por su cuenta.
+
+      OJO: el nombre de esta clase no se puede cambiar sin que Android
+      considere que es otro servicio y el usuario pierda el permiso que ya
+      concedio. Por eso conserva el nombre original aunque la app ahora se
+      llame Mi Platica.
+    -->
+    <service
+      android:name="expo.modules.notificationreader.FinZenNotificationListener"
+      android:label="Mi Platica"
+      android:exported="false"
+      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+      </intent-filter>
+    </service>
+
+    <!--
+      Atiende el boton "Descartar" de la sugerencia. No se exporta: solo
+      lo puede invocar la propia app desde su notificacion.
+    -->
+    <receiver
+      android:name="expo.modules.notificationreader.SuggestionActionReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="expo.modules.notificationreader.DISMISS" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

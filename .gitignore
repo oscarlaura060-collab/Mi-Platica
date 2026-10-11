@@ -1,0 +1,48 @@
+# Dependencias: se reinstalan con npm install
+node_modules/
+
+# JDK portatil (303 MB). Se descarga aparte, no es codigo del proyecto.
+tools/
+
+# Resultados de compilacion
+android/build/
+android/app/build/
+android/.gradle/
+android/.cxx/
+android/local.properties
+ios/build/
+ios/Pods/
+*.apk
+*.aab
+build.log
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Claves y secretos: NUNCA al repositorio
+*.keystore
+*.jks
+!android/app/debug.keystore
+.env
+.env.*
+google-services.json
+GoogleService-Info.plist
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Cache de otras herramientas
+.manus/

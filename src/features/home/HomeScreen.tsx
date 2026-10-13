@@ -12,24 +12,21 @@ import { money } from '@/utils/money';
 import { pendingFixedIncomesDue } from '@/db/repositories/fixedIncomes';
 import { HomeHeader } from './components/HomeHeader';
 import { BalanceSummary } from './components/BalanceSummary';
-import { QuickActions } from './components/QuickActions';
+import { CoachAdviceCard } from './components/CoachAdviceCard';
 import { AccountsCarousel } from './components/AccountsCarousel';
 import { RecentActivityPanel } from './components/RecentActivityPanel';
 import { CoachMoodCard, type Mood } from './components/CoachMoodCard';
 import type { RootNav } from '@/app/navigation/types';
 
 /**
- * INICIO
+ * INICIO — Ola Financiera (Stitch v4)
  *
- * Orden de lectura (debe entenderse en menos de cinco segundos):
- *   1. quien eres          4. tus cuentas
- *   2. cuanto tienes       5. tus ultimos movimientos
- *   3. que puedes hacer    6. como te sientes y que recomendamos
- *
- * El header es navy y el panel de movimientos offWhite en AMBOS temas:
- * es el lenguaje visual de la marca, no el modo oscuro.
- *
- * Todos los datos son REALES, de la base local. No hay mocks.
+ * 1. Quien eres + accesos rápidos
+ * 2. Cifra protagonista: Disponible real después de compromisos
+ * 3. Siguiente paso: + Ingreso / - Gasto
+ * 4. Orientación sin culpa: Consejo del Coach
+ * 5. Tus cuentas
+ * 6. Tus movimientos recientes y ánimo
  */
 export function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -41,9 +38,13 @@ export function HomeScreen() {
     settings,
     availableReal,
     total,
+    fixedPending,
+    fixedMonthly,
     primaryAccount,
     detectedPending,
     advice,
+    themePref,
+    setTheme,
     refresh,
   } = useAppStore();
 
@@ -89,7 +90,6 @@ export function HomeScreen() {
   }, [ready, revisarIngresoFijo]);
 
   // ---- Animo del dia -------------------------------------------------
-  // Se guarda con la fecha para preguntarlo una vez al dia.
   const moodGuardado =
     settings.mood_date === dayKey() ? (settings.mood_value as Mood) || null : null;
   const [mood, setMood] = useState<Mood | null>(moodGuardado);
@@ -112,7 +112,6 @@ export function HomeScreen() {
   const saludo =
     hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
 
-  // El mensaje de apoyo acompaña el animo; nunca culpa.
   const apoyo =
     mood === 'worried'
       ? 'Vamos paso a paso, tú puedes.'
@@ -122,14 +121,12 @@ export function HomeScreen() {
           ? 'Qué bueno. Sigamos así.'
           : 'Vamos paso a paso, tú puedes.';
 
-  // Con compromisos registrados se muestra el disponible real; si no hay
-  // ninguno, mostrarlo seria repetir el saldo con otro nombre.
   const hayCompromisos = availableReal !== total;
   const montoPrincipal = hayCompromisos ? availableReal : total;
   const leyenda = hayCompromisos
-    ? 'Después de compromisos'
+    ? 'Libre para ti después de cubrir compromisos'
     : primaryAccount && accounts.length > 1
-      ? `De ${accounts.length} cuentas`
+      ? `De ${accounts.length} cuentas activas`
       : 'Disponible hoy';
 
   const cargando = !ready || recargando;
@@ -152,12 +149,12 @@ export function HomeScreen() {
           />
         }
       >
-        {/* ---------- ZONA OSCURA ---------- */}
+        {/* ---------- ZONA OSCURA (CANOPY) ---------- */}
         <View
           style={{
             paddingTop: insets.top + space(2),
             paddingHorizontal: space(5),
-            paddingBottom: space(6),
+            paddingBottom: space(5),
           }}
         >
           <HomeHeader
@@ -166,23 +163,34 @@ export function HomeScreen() {
             hasAlerts={detectedPending > 0 || advice?.severity === 'block'}
             onNotifications={() => nav.navigate('Detected')}
             onSettings={() => nav.navigate('Settings')}
+            onToggleTheme={() => setTheme(themePref === 'dark' ? 'light' : 'dark')}
+            isDark={themePref === 'dark'}
           />
 
-          <View style={{ height: space(7) }} />
+          <View style={{ height: space(5) }} />
+
+          {/* Héroe: Ola Financiera con cifra protagonista y acciones gemelas */}
           <BalanceSummary
             amount={montoPrincipal}
             caption={leyenda}
             loading={cargando}
-          />
-
-          <View style={{ height: space(6) }} />
-          <QuickActions
+            commitmentsCovered={fixedPending === 0}
+            commitmentsAmount={fixedMonthly > 0 ? fixedMonthly : undefined}
             onIncome={() => nav.navigate('QuickAdd', { type: 'income' })}
             onExpense={() => nav.navigate('QuickAdd', { type: 'expense' })}
-            onCoach={() => nav.navigate('Coach')}
           />
 
-          <View style={{ height: space(7) }} />
+          <View style={{ height: space(3.5) }} />
+
+          {/* Consejo del Coach: reflexivo, sin culpa */}
+          <CoachAdviceCard
+            advice={advice}
+            onPress={() => nav.navigate('Coach')}
+          />
+
+          <View style={{ height: space(5) }} />
+
+          {/* Carrusel de Cuentas */}
           <AccountsCarousel
             accounts={accounts}
             primaryId={primaryAccount?.id ?? null}

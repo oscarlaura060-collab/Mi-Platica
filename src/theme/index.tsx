@@ -39,6 +39,13 @@ interface Palette {
   violet: string;
   overlay: string;
   gradient: [string, string];
+  surfaceLowest: string;
+  surfaceLow: string;
+  surfaceContainer: string;
+  surfaceHigh: string;
+  surfaceHighest: string;
+  onSurface: string;
+  onSurfaceVariant: string;
 }
 
 const dark: Palette = {
@@ -67,6 +74,13 @@ const dark: Palette = {
   violet: '#8B9BF5',
   overlay: 'rgba(3,12,20,0.74)',
   gradient: [BRAND.navySoft, BRAND.navy],
+  surfaceLowest: BRAND.surfaceContainerLowest,
+  surfaceLow: BRAND.surfaceContainerLow,
+  surfaceContainer: BRAND.surfaceContainer,
+  surfaceHigh: BRAND.surfaceContainerHigh,
+  surfaceHighest: BRAND.surfaceContainerHighest,
+  onSurface: BRAND.onSurface,
+  onSurfaceVariant: BRAND.onSurfaceVariant,
 };
 
 const light: Palette = {
@@ -95,6 +109,13 @@ const light: Palette = {
   violet: '#5C6BC0',
   overlay: 'rgba(7,26,42,0.38)',
   gradient: ['#E8F4F7', BRAND.offWhite],
+  surfaceLowest: '#FFFFFF',
+  surfaceLow: BRAND.offWhite,
+  surfaceContainer: '#FFFFFF',
+  surfaceHigh: '#EFF1EB',
+  surfaceHighest: '#E6E7E2',
+  onSurface: BRAND.ink,
+  onSurfaceVariant: BRAND.mutedDark,
 };
 
 export type Theme = Palette & {

@@ -256,7 +256,7 @@ export function Button({
 }: {
   label: string;
   onPress?: () => void;
-  tone?: 'primary' | 'ghost' | 'danger' | 'neutral';
+  tone?: 'primary' | 'ghost' | 'danger' | 'neutral' | 'accent';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
@@ -265,31 +265,37 @@ export function Button({
   const t = useTheme();
   const bg = {
     primary: t.primary,
+    accent: t.warn,
     ghost: 'transparent',
     danger: t.danger,
     neutral: t.cardAlt,
   }[tone];
   const fg = {
     primary: t.onPrimary,
+    accent: '#071A2A',
     ghost: t.textMuted,
     danger: '#FFFFFF',
     neutral: t.text,
   }[tone];
   const pad = { sm: t.space(2), md: t.space(3.5), lg: t.space(4.5) }[size];
+  const minH = { sm: 40, md: 48, lg: 54 }[size];
 
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => [
         {
           backgroundColor: bg,
           borderRadius: t.radius.pill,
           paddingVertical: pad,
           paddingHorizontal: t.space(6),
+          minHeight: minH,
           alignItems: 'center',
           justifyContent: 'center',
-          borderWidth: tone === 'ghost' ? 1 : 0,
+          borderWidth: tone === 'ghost' ? 1.5 : 0,
           borderColor: t.border,
           opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
         },

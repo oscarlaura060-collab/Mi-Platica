@@ -23,6 +23,19 @@ export const BRAND = {
   paleCoral: '#FFF0ED',
   paleTurquoise: '#E5FAFC',
   paleYellow: '#FFF8D9',
+  // Superficies tonales Stitch v4 (Caribe Cálido)
+  surfaceContainerLowest: '#000F1E',
+  surfaceContainerLow: '#0A1D2D',
+  surfaceContainer: '#0F2131',
+  surfaceContainerHigh: '#1A2B3C',
+  surfaceContainerHighest: '#253647',
+  onSurface: '#D2E4FB',
+  onSurfaceVariant: '#BBC9CB',
+  outlineVariant: '#3C494B',
+  primaryFixedDim: '#40D9E9',
+  turquoiseAccessible: '#0A8F9C',
+  yellowAccessible: '#9E7400',
+  coralAccessible: '#D93829',
 } as const;
 
 /**
@@ -49,4 +62,7 @@ export const font = {
   tiny: 11,
   /** El saldo del Inicio: la cifra protagonista. */
   hero: 46,
+  /** Display currency mobile Stitch v4 */
+  displayCurrency: 36,
+  displayCurrencyMobile: 30,
 } as const;

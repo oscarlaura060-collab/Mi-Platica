@@ -62,13 +62,13 @@ function SectionHeader({ onSeeAll }: { onSeeAll: () => void }) {
 
 function AccountCard({
   account,
-  bg,
+  accentColor,
   width,
   onPress,
   isPrimary,
 }: {
   account: AccountBalance;
-  bg: string;
+  accentColor: string;
   width: number;
   onPress: () => void;
   isPrimary: boolean;
@@ -89,53 +89,57 @@ function AccountCard({
       }
       style={({ pressed }) => ({
         width,
-        backgroundColor: bg,
+        backgroundColor: BRAND.surfaceContainerLow,
         borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: BRAND.borderDark,
         padding: space(4),
-        opacity: pressed ? 0.9 : 1,
+        opacity: pressed ? 0.85 : 1,
         transform: pressed && !t.reduceMotion ? [{ scale: 0.985 }] : undefined,
       })}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(3) }}>
-        {/* Cuadro del icono: contrasta con el fondo de color de la tarjeta */}
+        {/* Cuadro del icono: con fondo suave del color de la cuenta */}
         <View
           style={{
             width: 44,
             height: 44,
-            borderRadius: 14,
-            backgroundColor: 'rgba(7,26,42,0.12)',
+            borderRadius: radius.md,
+            backgroundColor: accentColor + '20',
+            borderWidth: 1,
+            borderColor: accentColor + '40',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon size={22} color={BRAND.navy} strokeWidth={2.2} />
+          <Icon size={22} color={accentColor} strokeWidth={2.4} />
         </View>
 
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Txt variant="body" color={BRAND.navy} weight="700" numberOfLines={1}>
+          <Txt variant="body" color={BRAND.onSurface} weight="700" numberOfLines={1}>
             {account.name}
           </Txt>
           <Txt
             variant="h3"
-            color={BRAND.navy}
+            color={BRAND.white}
             weight="800"
             numberOfLines={1}
-            style={{ fontSize: 22 }}
+            style={{ fontSize: 20, marginTop: 2 }}
           >
             {money(valor)}
           </Txt>
           {isPrimary ? (
-            <Txt variant="small" color="rgba(7,26,42,0.62)" weight="600">
+            <Txt variant="tiny" color={BRAND.turquoise} weight="700" style={{ marginTop: 2 }}>
               Cuenta principal
             </Txt>
           ) : esTarjeta ? (
-            <Txt variant="small" color="rgba(7,26,42,0.62)" weight="600">
-              Lo que debes
+            <Txt variant="tiny" color={BRAND.coral} weight="700" style={{ marginTop: 2 }}>
+              Cupo usado
             </Txt>
           ) : null}
         </View>
 
-        <ChevronRight size={22} color="rgba(7,26,42,0.55)" strokeWidth={2.5} />
+        <ChevronRight size={20} color={BRAND.mutedLight} strokeWidth={2.5} />
       </View>
     </Pressable>
   );
@@ -217,7 +221,7 @@ export function AccountsCarousel({
             <AccountCard
               key={a.id}
               account={a}
-              bg={FONDOS[i % FONDOS.length]}
+              accentColor={a.color || FONDOS[i % FONDOS.length]}
               width={anchoTarjeta}
               isPrimary={a.id === primaryId}
               onPress={() => onOpen(a)}

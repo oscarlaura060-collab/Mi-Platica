@@ -5,12 +5,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {
   Bell,
+  CalendarClock,
   ChartNoAxesColumn,
   ChevronRight,
+  Coins,
   FileText,
   Landmark,
+  Plus,
   Settings as SettingsIcon,
   Snowflake,
+  SunMedium,
   Target,
   TrendingUp,
 } from 'lucide-react-native';
@@ -142,40 +146,49 @@ export function DebtsScreen() {
         gap: space(3),
         paddingHorizontal: space(5),
         paddingTop: insets.top + space(2),
-        paddingBottom: space(4),
+        paddingBottom: space(3),
       }}
     >
       <View accessible accessibilityLabel="Mi Platica">
         <Simbolo size={38} />
       </View>
-      <T size={28} weight="800" color={BRAND.white} style={{ flex: 1 }} lines={1} header>
-        Deudas
-      </T>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <T size={24} weight="800" color={BRAND.white} lines={1} header>
+          Mis Deudas
+        </T>
+        <T size={12} weight="600" color={BRAND.mutedLight} lines={1}>
+          Estrategia y paz mental
+        </T>
+      </View>
 
       <Pressable
         onPress={() => nav.navigate('Detected')}
         accessibilityRole="button"
         accessibilityLabel="Notificaciones"
-        hitSlop={8}
+        hitSlop={10}
         style={({ pressed }) => ({
           width: 44,
           height: 44,
+          borderRadius: 22,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: pressed ? 0.6 : 1,
+          backgroundColor: pressed ? 'rgba(255,255,255,0.08)' : 'transparent',
+          opacity: pressed ? 0.75 : 1,
         })}
       >
-        <Bell size={24} color={BRAND.white} strokeWidth={2.2} />
+        <Bell size={22} color={BRAND.white} strokeWidth={2.2} />
         {detectedPending > 0 ? (
           <View
             style={{
               position: 'absolute',
-              top: 9,
-              right: 9,
-              width: 10,
-              height: 10,
-              borderRadius: 5,
+              top: 8,
+              right: 8,
+              width: 9,
+              height: 9,
+              borderRadius: 4.5,
               backgroundColor: BRAND.coral,
+              borderWidth: 1.5,
+              borderColor: BRAND.navy,
             }}
           />
         ) : null}
@@ -185,16 +198,18 @@ export function DebtsScreen() {
         onPress={() => nav.navigate('Settings')}
         accessibilityRole="button"
         accessibilityLabel="Ajustes"
-        hitSlop={8}
+        hitSlop={10}
         style={({ pressed }) => ({
           width: 44,
           height: 44,
+          borderRadius: 22,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: pressed ? 0.6 : 1,
+          backgroundColor: pressed ? 'rgba(255,255,255,0.08)' : 'transparent',
+          opacity: pressed ? 0.75 : 1,
         })}
       >
-        <SettingsIcon size={24} color={BRAND.white} strokeWidth={2.2} />
+        <SettingsIcon size={22} color={BRAND.white} strokeWidth={2.2} />
       </Pressable>
     </View>
   );
@@ -208,98 +223,254 @@ export function DebtsScreen() {
           ? 'ya'
           : `${o.monthsToFreedom} ${o.monthsToFreedom === 1 ? 'mes' : 'meses'}`;
 
+    const numObligaciones = o.cards.length + o.upcoming.length;
+    const proximo = o.upcoming[0];
+
     return (
       <View
         style={{
           marginHorizontal: space(5),
-          backgroundColor: BRAND.plum,
-          borderRadius: radius.lg,
+          backgroundColor: BRAND.surfaceContainerLow,
+          borderRadius: radius.xl,
           borderWidth: 1,
-          borderColor: BRAND.coral + '44',
-          padding: space(4.5),
+          borderColor: BRAND.borderDark,
+          padding: space(5),
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <T size={15} weight="500" color={BRAND.mutedLight}>
-              Deuda total
-            </T>
-            <Sep h={1} />
-            {/* El total es el dato dominante: se encoge antes que partirse. */}
-            <T
-              size={o.total >= 10_000_000_00 ? 30 : 36}
-              weight="800"
-              color={BRAND.white}
-              lines={1}
-              a11y={`Deuda total ${money(o.total)}`}
+        {/* Header con etiqueta y badge */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <T size={12} weight="800" color={BRAND.mutedLight} style={{ letterSpacing: 0.8 }}>
+            TOTAL PENDIENTE POR PAGAR
+          </T>
+          {!o.isEmpty ? (
+            <View
+              style={{
+                paddingHorizontal: space(2.5),
+                paddingVertical: space(1),
+                borderRadius: radius.pill,
+                backgroundColor: 'rgba(20, 196, 212, 0.12)',
+                borderWidth: 1,
+                borderColor: 'rgba(20, 196, 212, 0.25)',
+              }}
             >
-              {money(o.total)}
-            </T>
-          </View>
-          <View
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: 25,
-              borderWidth: 1,
-              borderColor: BRAND.coral + '55',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+              <T size={11} weight="800" color={BRAND.turquoise}>
+                {numObligaciones > 0
+                  ? `${numObligaciones} ${numObligaciones === 1 ? 'obligación activa' : 'obligaciones activas'}`
+                  : 'Deuda activa'}
+              </T>
+            </View>
+          ) : (
+            <View
+              style={{
+                paddingHorizontal: space(2.5),
+                paddingVertical: space(1),
+                borderRadius: radius.pill,
+                backgroundColor: 'rgba(20, 196, 212, 0.12)',
+              }}
+            >
+              <T size={11} weight="800" color={BRAND.turquoise}>
+                Al día
+              </T>
+            </View>
+          )}
+        </View>
+
+        <Sep h={2} />
+
+        {/* Monto Principal */}
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space(1.5) }}>
+          <T
+            size={o.total >= 10_000_000_00 ? 28 : 34}
+            weight="800"
+            color={BRAND.white}
+            lines={1}
+            a11y={`Deuda total ${money(o.total)}`}
           >
-            <ChartNoAxesColumn size={24} color={BRAND.coral} strokeWidth={2.4} />
-          </View>
+            {money(o.total)}
+          </T>
+          <T size={16} weight="700" color={BRAND.mutedLight}>
+            COP
+          </T>
         </View>
 
         {o.total <= 0 ? (
           <>
             <Sep h={2} />
-            <T size={16} weight="700" color={BRAND.turquoise}>
-              ¡Vas muy bien!
+            <T size={15} weight="700" color={BRAND.turquoise}>
+              ¡Estás libre de deudas! Todo tu dinero trabaja para ti.
             </T>
           </>
         ) : (
           <>
             <Sep h={3.5} />
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {/* Métricas dobles en cuadrícula */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: space(3),
+                borderTopWidth: 1,
+                borderBottomWidth: proximo ? 1 : 0,
+                borderColor: 'rgba(28, 70, 92, 0.5)',
+              }}
+            >
               <View style={{ flex: 1, minWidth: 0 }}>
-                <T size={14} weight="500" color={BRAND.mutedLight}>
-                  Carga mensual
+                <T size={13} weight="500" color={BRAND.mutedLight}>
+                  Cuota de este mes
                 </T>
-                <T size={19} weight="800" color={BRAND.white} lines={1}>
+                <T size={18} weight="800" color={BRAND.yellow} lines={1} style={{ marginTop: 2 }}>
                   {money(o.monthlyCharge)}
                 </T>
               </View>
               <View
                 style={{
                   width: 1,
-                  height: 38,
-                  backgroundColor: BRAND.mutedLight + '33',
-                  marginHorizontal: space(4),
+                  height: 34,
+                  backgroundColor: 'rgba(28, 70, 92, 0.5)',
+                  marginHorizontal: space(3),
                 }}
               />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <T size={14} weight="500" color={BRAND.mutedLight}>
-                  Libre en
+                <T size={13} weight="500" color={BRAND.mutedLight}>
+                  Meta proyectada
                 </T>
-                <T size={19} weight="800" color={BRAND.white} lines={1}>
-                  {libre}
+                <T size={18} weight="800" color={BRAND.turquoise} lines={1} style={{ marginTop: 2 }}>
+                  {libre === '—' ? 'Sin fecha' : `Libre en ${libre}`}
                 </T>
               </View>
             </View>
-            {o.monthsToFreedom === null ? (
-              <>
-                <Sep h={2} />
-                <T size={12.5} weight="500" color={BRAND.mutedLight}>
-                  Con las cuotas actuales no alcanzo a calcular cuándo quedas libre.
-                </T>
-              </>
+
+            {/* Próximo vencimiento destacado */}
+            {proximo ? (
+              <Pressable
+                onPress={() =>
+                  proximo.kind === 'credit-card'
+                    ? nav.navigate('CreditCard', { cardId: proximo.refId })
+                    : nav.navigate('DebtDetail', { debtId: proximo.refId })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Próximo vencimiento en ${plazoTexto(proximo.dueInDays)}, ${proximo.name}, ${money(proximo.amount)}`}
+                style={({ pressed }) => ({
+                  marginTop: space(3),
+                  backgroundColor: 'rgba(15, 33, 49, 0.85)',
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: 'rgba(28, 70, 92, 0.5)',
+                  padding: space(3),
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space(3),
+                  opacity: pressed ? 0.75 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: 'rgba(255, 111, 97, 0.16)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <CalendarClock size={19} color={BRAND.coral} strokeWidth={2.4} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(1.5) }}>
+                    <T size={11} weight="800" color={BRAND.coral}>
+                      Próximo vencimiento
+                    </T>
+                    <T size={11} weight="600" color={BRAND.mutedLight}>
+                      • {plazoTexto(proximo.dueInDays)}
+                    </T>
+                  </View>
+                  <T size={14} weight="700" color={BRAND.white} lines={1} style={{ marginTop: 1 }}>
+                    {proximo.name} · {money(proximo.amount)} COP
+                  </T>
+                </View>
+                <ChevronRight size={18} color={BRAND.mutedLight} strokeWidth={2.2} />
+              </Pressable>
             ) : null}
           </>
         )}
       </View>
     );
   };
+
+  // --- Acciones Primarias Gemelas ----------------------------------------
+  const Acciones = () => (
+    <View
+      style={{
+        flexDirection: 'row',
+        gap: space(3),
+        paddingHorizontal: space(5),
+      }}
+    >
+      <Pressable
+        onPress={() => nav.navigate('DebtForm', {})}
+        accessibilityRole="button"
+        accessibilityLabel="Agregar deuda"
+        style={({ pressed }) => ({
+          flex: 1,
+          minHeight: 48,
+          height: 48,
+          borderRadius: radius.pill,
+          backgroundColor: BRAND.surfaceContainerHigh,
+          borderWidth: 1,
+          borderColor: BRAND.borderDark,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: space(2),
+          opacity: pressed ? 0.8 : 1,
+          transform: pressed && !t.reduceMotion ? [{ scale: 0.98 }] : undefined,
+        })}
+      >
+        <Plus size={19} color={BRAND.white} strokeWidth={2.5} />
+        <T size={14.5} weight="800" color={BRAND.white}>
+          Agregar deuda
+        </T>
+      </Pressable>
+
+      <Pressable
+        onPress={() => {
+          if (data?.priority) {
+            nav.navigate('DebtPay', {
+              debtId: data.priority.refId,
+              suggested: data.priority.amount,
+            });
+          } else if (data && data.upcoming.length > 0) {
+            nav.navigate('DebtPay', {
+              debtId: data.upcoming[0].refId,
+              suggested: data.upcoming[0].amount,
+            });
+          } else {
+            nav.navigate('DebtForm', {});
+          }
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Registrar abono"
+        style={({ pressed }) => ({
+          flex: 1,
+          minHeight: 48,
+          height: 48,
+          borderRadius: radius.pill,
+          backgroundColor: BRAND.yellow,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: space(2),
+          opacity: pressed ? 0.85 : 1,
+          transform: pressed && !t.reduceMotion ? [{ scale: 0.98 }] : undefined,
+        })}
+      >
+        <Coins size={19} color={BRAND.navy} strokeWidth={2.5} />
+        <T size={14.5} weight="800" color={BRAND.navy}>
+          Registrar abono
+        </T>
+      </Pressable>
+    </View>
+  );
 
   // --- Estrategia --------------------------------------------------------
   const Estrategia = () => {
@@ -321,26 +492,26 @@ export function DebtsScreen() {
           accessibilityLabel={`Seleccionar estrategia ${label}`}
           style={({ pressed }) => ({
             flex: 1,
-            minHeight: 54,
+            minHeight: 46,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             gap: space(2),
             paddingHorizontal: space(3),
             borderRadius: radius.pill,
-            borderWidth: activa ? 2 : 1,
+            borderWidth: activa ? 1.5 : 1,
             borderColor: activa ? BRAND.turquoise : BRAND.borderDark,
-            backgroundColor: activa ? 'transparent' : BRAND.navySoft,
+            backgroundColor: activa ? 'rgba(20, 196, 212, 0.15)' : BRAND.surfaceContainerLow,
             opacity: pressed ? 0.75 : 1,
           })}
         >
           <Icon
-            size={19}
+            size={18}
             color={activa ? BRAND.turquoise : BRAND.mutedLight}
-            strokeWidth={2.3}
+            strokeWidth={2.4}
           />
           <T
-            size={13.5}
+            size={13}
             weight={activa ? '800' : '600'}
             color={activa ? BRAND.white : BRAND.mutedLight}
             lines={1}
@@ -354,18 +525,66 @@ export function DebtsScreen() {
 
     return (
       <View style={{ paddingHorizontal: space(5) }}>
-        <T size={16} weight="700" color={BRAND.mutedLight}>
-          Estrategia de salida
-        </T>
-        <Sep h={2.5} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <T size={15} weight="800" color={BRAND.onSurface} style={{ letterSpacing: 0.2 }}>
+            Estrategia de pago
+          </T>
+          <T size={12} weight="600" color={BRAND.turquoise}>
+            Personalizable
+          </T>
+        </View>
+
+        <Sep h={2} />
+
+        {/* Switch selector tipo píldora */}
         <View style={{ flexDirection: 'row', gap: space(2.5) }}>
-          <Opcion valor="avalanche" label="Avalancha (menos interés)" Icon={TrendingUp} />
+          <Opcion valor="avalanche" label="Avalancha (interés)" Icon={TrendingUp} />
           <Opcion valor="snowball" label="Bola de nieve" Icon={Snowflake} />
         </View>
-        <Sep h={2.5} />
-        <T size={13} weight="500" color={BRAND.mutedLight} style={{ lineHeight: 19 }}>
-          {STRATEGY_HELP[estrategia]}
-        </T>
+
+        <Sep h={3} />
+
+        {/* Consejo amigable del Coach caribeño (sin culpa) */}
+        <View
+          style={{
+            backgroundColor: BRAND.surfaceContainerLow,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 212, 71, 0.32)',
+            padding: space(3.5),
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: space(3),
+          }}
+        >
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              backgroundColor: 'rgba(255, 212, 71, 0.16)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: 1,
+            }}
+          >
+            <SunMedium size={18} color={BRAND.yellow} strokeWidth={2.4} />
+          </View>
+
+          <View style={{ flex: 1, minWidth: 0, gap: space(0.5) }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(1) }}>
+              <T size={11} weight="800" color={BRAND.yellow} style={{ letterSpacing: 0.3 }}>
+                CONSEJO MI PLATICA
+              </T>
+              <T size={11} weight="600" color={BRAND.mutedLight}>
+                • Sin culpas
+              </T>
+            </View>
+            <T size={13} weight="500" color={BRAND.onSurface} style={{ lineHeight: 18 }}>
+              {STRATEGY_HELP[estrategia]} ¡Tú tienes la autonomía para liquidar como te dé más tranquilidad!
+            </T>
+          </View>
+        </View>
       </View>
     );
   };
@@ -632,7 +851,9 @@ export function DebtsScreen() {
     >
       <Cabecera />
       <Resumen o={data} />
-      <Sep h={5} />
+      <Sep h={4} />
+      <Acciones />
+      <Sep h={4.5} />
       <Estrategia />
 
       <Panel>

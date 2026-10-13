@@ -5,11 +5,18 @@ node_modules/
 tools/
 
 # Resultados de compilacion
+build/
+app/build/
 android/build/
 android/app/build/
+.gradle/
 android/.gradle/
 android/.cxx/
+local.properties
 android/local.properties
+**/local.properties
+**/.gradle/
+**/build/
 ios/build/
 ios/Pods/
 *.apk

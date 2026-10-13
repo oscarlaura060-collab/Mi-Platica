@@ -29,13 +29,13 @@ cerrada.
 
 | Área | Estado | Observaciones |
 |---|---|---|
-| Fundaciones visuales | ⚠️ Parcial | Tema con dos paletas y tokens centralizados. **Falta migrar a la paleta del prompt maestro.** Sin librería de íconos. Faltan `Skeleton` y `ErrorState`. |
-| Navegación | ✅ Funcional | 4 pestañas correctas + 21 rutas. Deep links verificados. Sin rediseño visual. |
-| Datos y estado financiero | ✅ Completo | 19 tablas, 7 vistas, 11 migraciones. Store de zustand. 167 comprobaciones pasan. |
-| Inicio | ⚠️ Funcional | Saludo, cuenta principal, gráficos, metas, coach, movimientos. **Sin diseño aprobado aplicado.** |
+| Fundaciones visuales | ✅ Implementado | Tokens semánticos Stitch v4 centralizados, superficies tonales, contrastes WCAG 2.2 AA. |
+| Navegación | ✅ Funcional | 4 pestañas correctas + 21 rutas. Deep links verificados. |
+| Datos y estado financiero | ✅ Completo | 19 tablas, 7 vistas, 12 migraciones. Store de zustand. 100% pruebas pasando. |
+| Inicio | ✅ Piloto v4 | Rediseño Ola Financiera: saldo héroe 36dp, acciones 48dp, carrusel tonal, coach sin culpas. |
 | Ingresos | ✅ Funcional | Registro + reparto con destinos editables. Ingresos fijos con frecuencia semanal/quincenal/mensual. |
 | Gastos | ✅ Funcional | Registro con teclado propio. Gastos fijos quincenales y mensuales con fechas. |
-| Deudas | ✅ Funcional | Amortización, abonos, avalancha/bola de nieve, tarjetas con corte y cuotas. |
+| Deudas | ✅ Piloto v4 | Rediseño Ola Financiera: total pendiente héroe, libre en N meses, avalancha/nieve, abonos rápidos. |
 | Ahorro | ✅ Funcional | Metas con propósito, cuatro opciones de plan, aportes, quincenal vs mensual. |
 | Análisis | ✅ Funcional | Rangos, ciclos de quincena, calendario, 6 gráficos. |
 | Coach | ✅ Funcional | 8 reglas, pantalla de preguntas, mensajes con cifra y fecha reales. |

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 import { useTheme } from '@/theme';
 import { Badge, Card, ProgressBar, Row, Spacer, Txt } from './ui';
 import { money, pct } from '@/utils/money';
@@ -15,49 +14,40 @@ export function AccountPill({
 }) {
   const t = useTheme();
   const negative = account.balance < 0;
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        width: 150,
-        padding: t.space(3.5),
-        borderRadius: t.radius.lg,
+    <button
+      type="button"
+      onClick={onPress}
+      className="flex-shrink-0 w-36 sm:w-44 p-3.5 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-95 cursor-pointer shadow-sm select-none"
+      style={{
         backgroundColor: t.card,
-        borderWidth: 1,
         borderColor: t.border,
-        opacity: pressed ? 0.85 : 1,
-      })}
+      }}
     >
-      <Row gap={2}>
-        <View
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: account.color,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+      <div className="flex items-center gap-2 mb-2">
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-xs shrink-0"
+          style={{ backgroundColor: account.color, color: '#06100B' }}
         >
-          <Txt variant="tiny" color="#06100B" weight="800">
-            {(account.emoji ?? account.name.slice(0, 1)).toUpperCase()}
-          </Txt>
-        </View>
-        <Txt variant="tiny" muted numberOfLines={1} style={{ flex: 1 }}>
+          {(account.emoji ?? account.name.slice(0, 1)).toUpperCase()}
+        </div>
+        <span className="text-xs font-semibold truncate" style={{ color: t.textMuted }}>
           {account.name}
-        </Txt>
-      </Row>
-      <Spacer h={2.5} />
-      <Txt variant="h3" color={negative ? t.danger : t.text}>
+        </span>
+      </div>
+      <div
+        className="text-base sm:text-lg font-bold tracking-tight truncate"
+        style={{ color: negative ? t.danger : t.text }}
+      >
         {money(account.balance)}
-      </Txt>
+      </div>
       {account.include_in_total === 0 ? (
-        <>
-          <Spacer h={1.5} />
+        <div className="mt-1">
           <Badge label="fuera del total" />
-        </>
+        </div>
       ) : null}
-    </Pressable>
+    </button>
   );
 }
 
@@ -87,61 +77,48 @@ export function TransactionItem({
         : (tx.category_name ?? (inflow ? 'Ingreso' : 'Gasto'));
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: t.space(3),
-        paddingVertical: t.space(3),
-        opacity: pressed ? 0.7 : 1,
-      })}
+    <div
+      onClick={onPress}
+      className="flex items-center gap-3 py-3 px-2 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99] cursor-pointer"
     >
-      <View
+      <div
+        className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0"
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          alignItems: 'center',
-          justifyContent: 'center',
           backgroundColor: (tx.category_color ?? color) + '22',
+          borderWidth: 1,
+          borderColor: (tx.category_color ?? color) + '44',
         }}
       >
-        <Txt variant="body">
-          {tx.category_emoji ?? (tx.type === 'debt_payment' ? '%' : inflow ? '+' : '-')}
-        </Txt>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Txt variant="body" numberOfLines={1}>
+        {tx.category_emoji ?? (tx.type === 'debt_payment' ? '%' : inflow ? '+' : '-')}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold truncate" style={{ color: t.text }}>
           {title}
-        </Txt>
-        <Txt variant="tiny" faint numberOfLines={1}>
+        </div>
+        <div className="text-xs truncate" style={{ color: t.textFaint }}>
           {tx.account_name}
           {tx.note ? ` · ${tx.note}` : ''}
           {tx.coach_override === 1 ? ' · ignoraste el consejo' : ''}
-        </Txt>
-      </View>
-      <Txt variant="body" color={color} weight="700">
+        </div>
+      </div>
+      <div className="text-sm font-bold shrink-0" style={{ color }}>
         {inflow ? '+' : '-'} {money(tx.amount)}
-      </Txt>
-    </Pressable>
+      </div>
+    </div>
   );
 }
 
 export function DayHeader({ day, total }: { day: string; total: number }) {
   const t = useTheme();
   return (
-    <Row
-      justify="space-between"
-      style={{ marginTop: t.space(4), marginBottom: t.space(1) }}
-    >
-      <Txt variant="tiny" faint weight="700">
+    <div className="flex justify-between items-center mt-4 mb-1 px-1">
+      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: t.textFaint }}>
         {prettyDay(day).toUpperCase()}
-      </Txt>
-      <Txt variant="tiny" faint>
+      </span>
+      <span className="text-xs font-semibold" style={{ color: t.textFaint }}>
         {money(total)}
-      </Txt>
-    </Row>
+      </span>
+    </div>
   );
 }
 
@@ -160,47 +137,46 @@ export function DebtCard({
   const overdue = due.startsWith('Vencida');
 
   return (
-    <Card onPress={onPress} style={{ marginBottom: t.space(3) }}>
-      <Row justify="space-between">
-        <Row gap={2} style={{ flex: 1 }}>
-          <View
-            style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: debt.color }}
-          />
-          <Txt variant="h3" numberOfLines={1} style={{ flex: 1 }}>
+    <Card onPress={onPress} className="mb-3">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: debt.color }} />
+          <span className="text-base font-bold truncate" style={{ color: t.text }}>
             {debt.name}
-          </Txt>
-        </Row>
+          </span>
+        </div>
         {priorityLabel ? <Badge label={priorityLabel} tone="warn" /> : null}
-      </Row>
+      </div>
 
-      <Spacer h={3} />
-      <Row justify="space-between" align="flex-end">
-        <View>
-          <Txt variant="tiny" faint>
+      <div className="flex justify-between items-end mb-3">
+        <div>
+          <span className="block text-[11px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: t.textFaint }}>
             Saldo pendiente
-          </Txt>
-          <Txt variant="h2">{money(debt.outstanding)}</Txt>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Txt variant="tiny" faint>
+          </span>
+          <span className="text-xl font-extrabold tracking-tight" style={{ color: t.text }}>
+            {money(debt.outstanding)}
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="block text-[11px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: t.textFaint }}>
             Cuota
-          </Txt>
-          <Txt variant="body">{money(debt.installment_amount ?? 0)}</Txt>
-        </View>
-      </Row>
+          </span>
+          <span className="text-sm font-bold" style={{ color: t.text }}>
+            {money(debt.installment_amount ?? 0)}
+          </span>
+        </div>
+      </div>
 
-      <Spacer h={3} />
       <ProgressBar value={progress} color={debt.color} />
-      <Spacer h={2} />
-      <Row justify="space-between">
-        <Txt variant="tiny" faint>
-          {debt.installments_paid}/{debt.installments_total} cuotas ·{' '}
-          {(debt.monthly_rate_bp / 100).toFixed(2)}% m.v.
-        </Txt>
-        <Txt variant="tiny" color={overdue ? t.danger : t.textFaint} weight="700">
+
+      <div className="flex justify-between items-center mt-2.5 text-xs font-medium">
+        <span style={{ color: t.textFaint }}>
+          {debt.installments_paid}/{debt.installments_total} cuotas · {(debt.monthly_rate_bp / 100).toFixed(2)}% m.v.
+        </span>
+        <span className="font-bold" style={{ color: overdue ? t.danger : t.textFaint }}>
           {due}
-        </Txt>
-      </Row>
+        </span>
+      </div>
     </Card>
   );
 }

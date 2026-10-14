@@ -1,50 +1,44 @@
-import React from 'react';
-import { TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { CSSProperties } from 'react';
 import { useTheme } from '@/theme';
-import { Txt } from './ui';
 import { centsToInput, formatThousands, parseMoneyInput } from '@/utils/money';
 
-/**
- * Campo de dinero en pesos colombianos.
- *
- * Muestra los puntos de miles mientras se escribe (250.000) pero hacia
- * afuera trabaja SIEMPRE en centavos enteros: el formato es solo pintura,
- * nunca toca el valor que se guarda ni el que se calcula.
- */
 export function MoneyInput({
   value,
   onChange,
   placeholder = '0',
   size = 'md',
   autoFocus,
-  style,
   prefix = true,
   helper,
   disabled,
+  className = '',
+  style,
 }: {
-  /** Valor en centavos. */
   value: number;
   onChange: (cents: number) => void;
   placeholder?: string;
   size?: 'md' | 'lg' | 'xl';
   autoFocus?: boolean;
-  style?: StyleProp<ViewStyle>;
   prefix?: boolean;
   helper?: string;
   disabled?: boolean;
+  className?: string;
+  style?: CSSProperties;
 }) {
   const t = useTheme();
-
-  // El texto es estado local para que borrar no "pelee" con el formateo;
-  // se resincroniza solo si el valor cambia desde fuera.
   const [text, setText] = React.useState(() => centsToInput(value));
 
   React.useEffect(() => {
-    if (parseMoneyInput(text) !== value) setText(centsToInput(value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+    if (parseMoneyInput(text) !== value) {
+      setText(centsToInput(value));
+    }
+  }, [value, text]);
 
-  const fontSize = size === 'xl' ? 38 : size === 'lg' ? 24 : 18;
+  const fontSizes = {
+    md: 'text-lg',
+    lg: 'text-2xl',
+    xl: 'text-3xl sm:text-4xl',
+  }[size];
 
   function handle(next: string) {
     const formatted = formatThousands(next);
@@ -53,65 +47,41 @@ export function MoneyInput({
   }
 
   return (
-    <View>
-      <View
-        style={[
-          {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: t.mode === 'dark' ? t.cardAlt : t.bgElevated,
-            borderRadius: t.radius.md,
-            borderWidth: 1,
-            borderColor: t.border,
-            paddingHorizontal: t.space(3.5),
-            paddingVertical: size === 'xl' ? t.space(2) : t.space(2.5),
-            opacity: disabled ? 0.5 : 1,
-          },
-          style,
-        ]}
+    <div className={`w-full ${className}`} style={style}>
+      <div
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
+          disabled ? 'opacity-50 cursor-not-allowed' : 'focus-within:ring-2 focus-within:ring-[#14C4D4]/40'
+        }`}
+        style={{
+          backgroundColor: t.mode === 'dark' ? t.cardAlt : t.bgElevated,
+          borderColor: t.border,
+        }}
       >
         {prefix ? (
-          <Txt
-            variant="body"
-            faint
-            weight="700"
-            style={{ fontSize: fontSize * 0.62 }}
+          <span
+            className="font-bold select-none"
+            style={{ color: t.textFaint }}
           >
             $
-          </Txt>
+          </span>
         ) : null}
-        <TextInput
-          value={text}
-          onChangeText={handle}
-          keyboardType="number-pad"
+        <input
+          type="text"
           inputMode="numeric"
           autoFocus={autoFocus}
-          editable={!disabled}
+          disabled={disabled}
+          value={text}
+          onChange={(e) => handle(e.target.value)}
           placeholder={placeholder}
-          placeholderTextColor={t.textFaint}
-          selectionColor={t.primary}
-          style={{
-            flex: 1,
-            color: t.text,
-            fontSize,
-            fontWeight: '700',
-            paddingVertical: 2,
-            // En Android el TextInput trae padding propio que descuadra
-            // la fila; se anula para que el "$" quede a la misma altura.
-            paddingHorizontal: 0,
-            textAlignVertical: 'center',
-          }}
+          className={`flex-1 bg-transparent font-bold outline-none tracking-tight w-full ${fontSizes}`}
+          style={{ color: t.text }}
         />
-      </View>
+      </div>
       {helper ? (
-        <>
-          <View style={{ height: t.space(1.5) }} />
-          <Txt variant="tiny" faint>
-            {helper}
-          </Txt>
-        </>
+        <p className="mt-1.5 text-xs font-medium" style={{ color: t.textFaint }}>
+          {helper}
+        </p>
       ) : null}
-    </View>
+    </div>
   );
 }

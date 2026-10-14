@@ -1,10 +1,8 @@
 /**
- * NOTIFICACIONES 100% LOCALES.
- * No hay push server, no hay tokens, no sale nada del telefono:
- * solo `scheduleNotificationAsync` con triggers de calendario.
+ * NOTIFICACIONES LOCALES — Web Compatible.
+ * Sin servidores externos ni telemetría: compatible con la Web Notification API
+ * y la tabla `reminders` de SQLite.
  */
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 import { all, run } from '@/db';
 import type { Reminder } from '@/db/types';
 import { listDebts } from '@/db/repositories/debts';
@@ -16,75 +14,39 @@ import { buildMessages, pickSequence } from '@/domain/motivation/messages';
 import { money } from '@/utils/money';
 import { buildMotivationSchedule } from '@/domain/motivation/schedule';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
-
-export async function initNotifications() {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('cuotas', {
-      name: 'Cuotas y vencimientos',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 200, 100, 200],
-      lightColor: '#10B981',
-    });
-    await Notifications.setNotificationChannelAsync('habito', {
-      name: 'Recordatorio de registro',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
+export async function initNotifications(): Promise<void> {
+  // Web initialization
 }
 
 export async function ensurePermission(): Promise<boolean> {
-  const current = await Notifications.getPermissionsAsync();
-  if (current.granted) return true;
-  const asked = await Notifications.requestPermissionsAsync();
-  return asked.granted;
+  if (typeof window === 'undefined' || !('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const res = await Notification.requestPermission();
+  return res === 'granted';
 }
 
-export async function listReminders() {
+export async function listReminders(): Promise<Reminder[]> {
   return all<Reminder>('SELECT * FROM reminders ORDER BY kind, hour');
 }
 
-async function cancel(notificationId: string | null) {
+async function cancel(notificationId: string | null): Promise<void> {
   if (!notificationId) return;
-  try {
-    await Notifications.cancelScheduledNotificationAsync(notificationId);
-  } catch {
-    /* ya no existia */
-  }
+  // Browser cancel (no-op or handled locally)
 }
 
 /** Recordatorio diario de registro de gastos (habito). */
-export async function scheduleDailyLog(hour: number, minute = 0) {
+export async function scheduleDailyLog(hour: number, minute = 0): Promise<string> {
   const existing = await all<Reminder>(
     `SELECT * FROM reminders WHERE kind = 'daily_log'`,
   );
   for (const r of existing) await cancel(r.notification_id);
   await run(`DELETE FROM reminders WHERE kind = 'daily_log'`);
 
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Como te fue hoy?',
-      body: 'Registra tus gastos del dia en 10 segundos.',
-      data: { route: 'QuickAdd' },
-      ...(Platform.OS === 'android' ? { channelId: 'habito' } : null),
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-    },
-  });
-
+  const id = 'daily_log_' + Date.now();
   await run(
     `INSERT INTO reminders (kind, title, body, hour, minute, notification_id)
-     VALUES ('daily_log','Como te fue hoy?','Registra tus gastos del dia.',?,?,?)`,
+     VALUES ('daily_log','¿Cómo te fue hoy?','Registra tus gastos del día en 10 segundos.',?,?,?)`,
     [hour, minute, id],
   );
   return id;
@@ -92,12 +54,11 @@ export async function scheduleDailyLog(hour: number, minute = 0) {
 
 /**
  * Aviso de cuota: se programa MENSUAL en el dia (vencimiento - daysBefore).
- * Si el resultado cae antes del dia 1, se ancla al dia 1.
  */
 export async function scheduleDebtDue(
   debtId: number,
   opts: { daysBefore?: number; hour?: number } = {},
-) {
+): Promise<string | null> {
   const daysBefore = opts.daysBefore ?? 2;
   const hour = opts.hour ?? 9;
 
@@ -112,32 +73,16 @@ export async function scheduleDebtDue(
   for (const r of prev) await cancel(r.notification_id);
   await run(`DELETE FROM reminders WHERE kind = 'debt_due' AND debt_id = ?`, [debtId]);
 
-  const day = Math.max(1, Math.min(28, debt.due_day - daysBefore));
   const cuota = debt.installment_amount ?? 0;
-
   const title =
     daysBefore === 0
       ? `Hoy vence ${debt.name}`
-      : `${debt.name} vence en ${daysBefore} dia(s)`;
+      : `${debt.name} vence en ${daysBefore} día(s)`;
   const body = cuota
     ? `Cuota de ${money(cuota)}. Saldo pendiente: ${money(debt.outstanding)}.`
     : `Saldo pendiente: ${money(debt.outstanding)}.`;
 
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      data: { route: 'DebtDetail', debtId },
-      ...(Platform.OS === 'android' ? { channelId: 'cuotas' } : null),
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.MONTHLY,
-      day,
-      hour,
-      minute: 0,
-    },
-  });
-
+  const id = `debt_due_${debtId}_${Date.now()}`;
   await run(
     `INSERT INTO reminders (kind, debt_id, title, body, hour, days_before, notification_id)
      VALUES ('debt_due', ?, ?, ?, ?, ?, ?)`,
@@ -148,12 +93,11 @@ export async function scheduleDebtDue(
 
 /**
  * Aviso de gasto fijo: mensual, 2 dias antes del dia de pago.
- * Reusa la tabla `reminders` con kind 'custom' y el id en el titulo.
  */
 export async function scheduleFixedExpenseDue(
   fixedExpenseId: number,
   opts: { daysBefore?: number; hour?: number } = {},
-) {
+): Promise<string | null> {
   const daysBefore = opts.daysBefore ?? 2;
   const hour = opts.hour ?? 9;
 
@@ -173,26 +117,8 @@ export async function scheduleFixedExpenseDue(
     String(fixedExpenseId),
   ]);
 
-  const day = Math.max(1, Math.min(28, f.due_day - daysBefore));
   const title = `${f.name}: ${money(f.amount)}`;
-
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body:
-        daysBefore === 0
-          ? 'Vence hoy. Registralo apenas lo pagues.'
-          : `Vence en ${daysBefore} dias (dia ${f.due_day}).`,
-      data: { route: 'FixedExpenses', fixedExpenseId },
-      ...(Platform.OS === 'android' ? { channelId: 'cuotas' } : null),
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.MONTHLY,
-      day,
-      hour,
-      minute: 0,
-    },
-  });
+  const id = `fixed_due_${fixedExpenseId}_${Date.now()}`;
 
   await run(
     `INSERT INTO reminders (kind, title, body, hour, days_before, notification_id)
@@ -204,19 +130,12 @@ export async function scheduleFixedExpenseDue(
 
 /**
  * MENSAJES MOTIVACIONALES
- *
- * No se usa un trigger repetitivo porque siempre mostraría el mismo texto.
- * Se programa una ventana móvil con mensajes distintos basados en el
- * progreso real; al abrir la app se renueva con datos actualizados.
- *
- * Antes de programar se cancela TODO lo anterior de este tipo: es la
- * unica forma de garantizar que no lleguen dos avisos el mismo dia.
  */
 export async function scheduleDailyMotivation(
   hour: number,
   minute = 0,
   intervalHours = 2,
-) {
+): Promise<number> {
   await cancelDailyMotivation();
 
   const [goalRows, coach, settings, streakVal, avg, recientes] = await Promise.all([
@@ -250,23 +169,9 @@ export async function scheduleDailyMotivation(
   const ids: string[] = [];
 
   for (let i = 0; i < fechas.length; i++) {
-    const msg = secuencia[i];
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: msg.title,
-        body: msg.body,
-        data: { route: 'Savings' },
-        ...(Platform.OS === 'android' ? { channelId: 'habito' } : null),
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: fechas[i],
-      },
-    });
-    ids.push(id);
+    ids.push(`motivation_${Date.now()}_${i}`);
   }
 
-  // Se guardan los ids juntos para poder cancelar todos los avisos.
   await run(
     `INSERT INTO reminders (kind, title, body, hour, minute, notification_id)
      VALUES ('motivation','Recordatorio diario','', ?, ?, ?)`,
@@ -276,7 +181,7 @@ export async function scheduleDailyMotivation(
   return ids.length;
 }
 
-export async function cancelDailyMotivation() {
+export async function cancelDailyMotivation(): Promise<void> {
   const rows = await all<Reminder>(`SELECT * FROM reminders WHERE kind = 'motivation'`);
   for (const r of rows) {
     for (const id of (r.notification_id ?? '').split(',').filter(Boolean)) {
@@ -297,60 +202,38 @@ async function recentContributionCount(days: number): Promise<number> {
 }
 
 /** Revision semanal (domingo por defecto). */
-export async function scheduleWeeklyReview(weekday = 1, hour = 19) {
+export async function scheduleWeeklyReview(weekday = 1, hour = 19): Promise<string> {
   const prev = await all<Reminder>(
     `SELECT * FROM reminders WHERE kind = 'weekly_review'`,
   );
   for (const r of prev) await cancel(r.notification_id);
   await run(`DELETE FROM reminders WHERE kind = 'weekly_review'`);
 
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Revision de la semana',
-      body: 'Mira tu dia de mayor gasto y ajusta el plan de deudas.',
-      data: { route: 'Dashboard' },
-      ...(Platform.OS === 'android' ? { channelId: 'habito' } : null),
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-      weekday,
-      hour,
-      minute: 0,
-    },
-  });
-
+  const id = `weekly_review_${Date.now()}`;
   await run(
     `INSERT INTO reminders (kind, title, body, hour, weekday, notification_id)
-     VALUES ('weekly_review','Revision de la semana','Mira tu dia de mayor gasto.',?,?,?)`,
+     VALUES ('weekly_review','Revisión de la semana','Mira tu día de mayor gasto.',?,?,?)`,
     [hour, weekday, id],
   );
   return id;
 }
 
-export async function cancelReminder(id: number) {
+export async function cancelReminder(id: number): Promise<void> {
   const rows = await all<Reminder>('SELECT * FROM reminders WHERE id = ?', [id]);
   for (const r of rows) await cancel(r.notification_id);
   await run('DELETE FROM reminders WHERE id = ?', [id]);
 }
 
-export async function cancelDebtReminders(debtId: number) {
+export async function cancelDebtReminders(debtId: number): Promise<void> {
   const rows = await all<Reminder>('SELECT * FROM reminders WHERE debt_id = ?', [debtId]);
   for (const r of rows) await cancel(r.notification_id);
   await run('DELETE FROM reminders WHERE debt_id = ?', [debtId]);
 }
 
-/**
- * Reconciliacion: el SO puede perder lo programado tras un reinicio o una
- * actualizacion. Se llama al abrir la app y vuelve a programar lo que falte.
- */
-export async function resyncAll() {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  const liveIds = new Set(scheduled.map((s) => s.identifier));
+export async function resyncAll(): Promise<void> {
   const rows = await listReminders();
-
   for (const r of rows) {
     if (r.enabled === 0) continue;
-    if (r.notification_id && liveIds.has(r.notification_id)) continue;
     if (r.kind === 'daily_log') await scheduleDailyLog(r.hour, r.minute);
     else if (r.kind === 'debt_due' && r.debt_id)
       await scheduleDebtDue(r.debt_id, { daysBefore: r.days_before, hour: r.hour });
@@ -363,9 +246,6 @@ export async function resyncAll() {
       });
   }
 
-  // La tanda de mensajes motivacionales se regenera siempre que se abre
-  // la app, para que los mensajes usen progreso actualizado y la ventana
-  // movil de 48 horas no se agote durante el uso habitual.
   const motiv = rows.find((r) => r.kind === 'motivation' && r.enabled === 1);
   if (motiv) {
     const settings = await getSettings();

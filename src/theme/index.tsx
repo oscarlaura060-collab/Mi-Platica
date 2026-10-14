@@ -1,19 +1,10 @@
-import React, { createContext, useContext, useMemo } from 'react';
-import { AccessibilityInfo, useColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { BRAND, font, radius, space } from './tokens';
 
 export { BRAND, font, radius, space } from './tokens';
 
-/**
- * Paletas derivadas de los tokens de marca.
- *
- * Nota sobre el Inicio: su cabecera es SIEMPRE navy y su panel de
- * movimientos SIEMPRE offWhite, en ambos temas. No es modo oscuro: es el
- * lenguaje visual de la marca (header oscuro + panel claro elevado), y
- * por eso esa pantalla usa BRAND directamente en esas dos superficies.
- */
-interface Palette {
+export interface Palette {
   mode: 'dark' | 'light';
   bg: string;
   bgSoft: string;
@@ -122,14 +113,6 @@ export type Theme = Palette & {
   radius: typeof radius;
   space: typeof space;
   font: typeof font;
-  shadow: {
-    shadowColor: string;
-    shadowOpacity: number;
-    shadowRadius: number;
-    shadowOffset: { width: number; height: number };
-    elevation: number;
-  };
-  /** true cuando el sistema pide reducir movimiento. */
   reduceMotion: boolean;
 };
 
@@ -139,13 +122,6 @@ function build(base: Palette, reduceMotion: boolean): Theme {
     radius,
     space,
     font,
-    shadow: {
-      shadowColor: base.mode === 'dark' ? '#000000' : BRAND.navy,
-      shadowOpacity: base.mode === 'dark' ? 0.35 : 0.08,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 3,
-    },
     reduceMotion,
   };
 }
@@ -153,37 +129,61 @@ function build(base: Palette, reduceMotion: boolean): Theme {
 const ThemeCtx = createContext<Theme>(build(dark, false));
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const system = useColorScheme();
+  const [systemScheme, setSystemScheme] = useState<'dark' | 'light'>('dark');
+  const [reduceMotion, setReduceMotion] = useState(false);
   const pref = useAppStore((s) => s.themePref);
-  const [reduce, setReduce] = React.useState(false);
 
-  // Si el usuario pidio reducir movimiento en su telefono, las pantallas
-  // desactivan sus animaciones.
-  React.useEffect(() => {
-    let vivo = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((v) => vivo && setReduce(v))
-      .catch(() => undefined);
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) =>
-      setReduce(v),
-    );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setSystemScheme(darkQuery.matches ? 'dark' : 'light');
+
+    const handleSchemeChange = (e: MediaQueryListEvent) => {
+      setSystemScheme(e.matches ? 'dark' : 'light');
+    };
+    darkQuery.addEventListener('change', handleSchemeChange);
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduceMotion(motionQuery.matches);
+
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      setReduceMotion(e.matches);
+    };
+    motionQuery.addEventListener('change', handleMotionChange);
+
     return () => {
-      vivo = false;
-      sub.remove();
+      darkQuery.removeEventListener('change', handleSchemeChange);
+      motionQuery.removeEventListener('change', handleMotionChange);
     };
   }, []);
 
   const theme = useMemo(() => {
-    const resolved = pref === 'system' ? (system ?? 'dark') : pref;
-    return build(resolved === 'light' ? light : dark, reduce);
-  }, [pref, system, reduce]);
+    const resolved = pref === 'system' ? systemScheme : pref;
+    const active = resolved === 'light' ? light : dark;
+
+    if (typeof document !== 'undefined') {
+      if (resolved === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+        document.body.style.backgroundColor = BRAND.navy;
+        document.body.style.color = '#F4FAFC';
+      } else {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+        document.body.style.backgroundColor = BRAND.offWhite;
+        document.body.style.color = BRAND.ink;
+      }
+    }
+
+    return build(active, reduceMotion);
+  }, [pref, systemScheme, reduceMotion]);
 
   return <ThemeCtx.Provider value={theme}>{children}</ThemeCtx.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeCtx);
 
-/** Paleta de bancos/billeteras colombianas para los presets de cuenta. */
 export const PROVIDERS: {
   key: string;
   name: string;
@@ -191,15 +191,15 @@ export const PROVIDERS: {
   emoji: string;
   type: 'bank' | 'wallet' | 'cash' | 'credit_card' | 'savings' | 'other';
 }[] = [
-  { key: 'bancolombia', name: 'Bancolombia', color: '#FDDA24', emoji: 'B', type: 'bank' },
-  { key: 'nequi', name: 'Nequi', color: '#200020', emoji: 'N', type: 'wallet' },
-  { key: 'daviplata', name: 'Daviplata', color: '#ED1C27', emoji: 'D', type: 'wallet' },
-  { key: 'davivienda', name: 'Davivienda', color: '#E1261C', emoji: 'D', type: 'bank' },
-  { key: 'bbva', name: 'BBVA', color: '#004481', emoji: 'B', type: 'bank' },
-  { key: 'bogota', name: 'Banco de Bogota', color: '#00447C', emoji: 'B', type: 'bank' },
-  { key: 'lulo', name: 'Lulo Bank', color: '#00D1B2', emoji: 'L', type: 'bank' },
-  { key: 'nu', name: 'Nu', color: '#820AD1', emoji: 'N', type: 'credit_card' },
-  { key: 'efectivo', name: 'Efectivo', color: '#16A34A', emoji: 'E', type: 'cash' },
-  { key: 'ahorro', name: 'Ahorro / Alcancia', color: BRAND.turquoise, emoji: 'A', type: 'savings' },
-  { key: 'otro', name: 'Otra cuenta', color: '#64748B', emoji: 'O', type: 'other' },
+  { key: 'bancolombia', name: 'Bancolombia', color: '#FDDA24', emoji: '🟡', type: 'bank' },
+  { key: 'nequi', name: 'Nequi', color: '#200020', emoji: '🟣', type: 'wallet' },
+  { key: 'daviplata', name: 'Daviplata', color: '#ED1C27', emoji: '🔴', type: 'wallet' },
+  { key: 'davivienda', name: 'Davivienda', color: '#E1261C', emoji: '🏛️', type: 'bank' },
+  { key: 'bbva', name: 'BBVA', color: '#004481', emoji: '🏦', type: 'bank' },
+  { key: 'bogota', name: 'Banco de Bogotá', color: '#00447C', emoji: '🏢', type: 'bank' },
+  { key: 'lulo', name: 'Lulo Bank', color: '#00D1B2', emoji: '🥑', type: 'bank' },
+  { key: 'nu', name: 'Nu (Nubank)', color: '#820AD1', emoji: '💳', type: 'credit_card' },
+  { key: 'efectivo', name: 'Efectivo', color: '#16A34A', emoji: '💵', type: 'cash' },
+  { key: 'ahorro', name: 'Ahorro / Alcancía', color: BRAND.turquoise, emoji: '🐷', type: 'savings' },
+  { key: 'otro', name: 'Otra cuenta', color: '#64748B', emoji: '💼', type: 'other' },
 ];

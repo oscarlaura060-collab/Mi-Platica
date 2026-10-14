@@ -1,5 +1,4 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 import {
   ArrowDownToLine,
   ArrowUp,
@@ -11,19 +10,13 @@ import {
   ShoppingCart,
   Utensils,
   Zap,
-} from 'lucide-react-native';
-import { BRAND, radius, space } from '@/theme/tokens';
-import { useTheme } from '@/theme';
-import { Button, Txt } from '@/components/ui';
+} from 'lucide-react';
+import { BRAND } from '@/theme/tokens';
+import { Button } from '@/components/ui';
 import { Skeleton } from '@/components/Skeleton';
 import { money } from '@/utils/money';
 import type { TransactionRow } from '@/db/types';
 
-/**
- * Icono por categoria. Se busca por palabra clave del nombre porque las
- * categorias las puede crear el usuario: asi una categoria nueva llamada
- * "Mercado del barrio" igual recibe el carrito.
- */
 function iconoPara(tx: TransactionRow) {
   if (tx.type === 'income') return ArrowDownToLine;
   if (tx.type === 'debt_payment') return CreditCard;
@@ -41,7 +34,7 @@ function iconoPara(tx: TransactionRow) {
 function tituloDe(tx: TransactionRow): string {
   if (tx.type === 'debt_payment') return tx.debt_name ?? 'Abono a deuda';
   if (tx.type === 'goal_deposit') return tx.note || 'Aporte a meta';
-  if (tx.type === 'transfer') return 'Traslado';
+  if (tx.type === 'transfer') return 'Traslado entre cuentas';
   return tx.note || tx.category_name || (tx.type === 'income' ? 'Ingreso' : 'Gasto');
 }
 
@@ -59,89 +52,6 @@ function subtituloDe(tx: TransactionRow): string {
   return `${tipo} · ${tx.account_name}`;
 }
 
-export function TransactionRowItem({
-  tx,
-  onPress,
-  last,
-}: {
-  tx: TransactionRow;
-  onPress: () => void;
-  last?: boolean;
-}) {
-  const t = useTheme();
-  const Icon = iconoPara(tx);
-  const entra = tx.type === 'income';
-  const neutro = tx.type === 'goal_deposit' || tx.type === 'transfer';
-
-  // El signo acompaña al color: el color nunca es la unica señal.
-  const signo = entra ? '+' : neutro ? '' : '−';
-  const colorValor = entra
-    ? BRAND.turquoiseDark
-    : neutro
-      ? BRAND.ink
-      : BRAND.coral;
-  const fondoIcono = entra
-    ? BRAND.paleTurquoise
-    : neutro
-      ? BRAND.paleYellow
-      : BRAND.paleCoral;
-  const colorIcono = entra
-    ? BRAND.turquoiseDark
-    : neutro
-      ? '#B8880A'
-      : BRAND.coral;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${tituloDe(tx)}, ${subtituloDe(tx)}, ${signo === '+' ? 'mas' : signo === '−' ? 'menos' : ''} ${money(tx.amount)}`}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: space(3),
-        paddingVertical: space(3.5),
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: BRAND.borderLight,
-        opacity: pressed ? 0.6 : 1,
-      })}
-    >
-      <View
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 22,
-          backgroundColor: fondoIcono,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon size={21} color={colorIcono} strokeWidth={2.2} />
-      </View>
-
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt variant="body" color={BRAND.ink} weight="700" numberOfLines={1}>
-          {tituloDe(tx)}
-        </Txt>
-        <Txt variant="small" color={BRAND.mutedDark} numberOfLines={1}>
-          {subtituloDe(tx)}
-        </Txt>
-      </View>
-
-      <Txt variant="h3" color={colorValor} weight="800" numberOfLines={1}>
-        {signo}
-        {money(tx.amount)}
-      </Txt>
-    </Pressable>
-  );
-}
-
-/**
- * Panel claro elevado sobre el fondo navy.
- *
- * Es la unica superficie clara del Inicio en ambos temas: forma parte
- * del lenguaje visual de la marca, no del modo oscuro.
- */
 export function RecentActivityPanel({
   transactions,
   loading,
@@ -155,96 +65,110 @@ export function RecentActivityPanel({
   onSeeAll: () => void;
   onOpen: (tx: TransactionRow) => void;
   onRegister: () => void;
-  /** El coach emocional va dentro del panel, debajo de la lista. */
   children?: React.ReactNode;
 }) {
   return (
-    <View
+    <div
+      className="rounded-t-[34px] p-5 sm:p-6 shadow-2xl transition-all"
       style={{
         backgroundColor: BRAND.offWhite,
-        borderTopLeftRadius: radius.sheet,
-        borderTopRightRadius: radius.sheet,
-        paddingHorizontal: space(5),
-        paddingTop: space(5),
-        minHeight: 420,
+        color: BRAND.ink,
       }}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <Txt variant="h2" color={BRAND.ink} weight="800">
-          Ultimos movimientos
-        </Txt>
-        <Pressable
-          onPress={onSeeAll}
-          accessibilityRole="button"
-          accessibilityLabel="Ver todos los movimientos"
-          hitSlop={10}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 2,
-            opacity: pressed ? 0.6 : 1,
-          })}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-black tracking-tight" style={{ color: BRAND.ink }}>
+          Últimos movimientos
+        </h2>
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="flex items-center gap-1 text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
+          style={{ color: BRAND.turquoiseDark }}
         >
-          <Txt variant="small" color={BRAND.turquoiseDark} weight="700">
-            Ver todos
-          </Txt>
-          <ChevronRight size={16} color={BRAND.turquoiseDark} strokeWidth={2.5} />
-        </Pressable>
-      </View>
-
-      <View style={{ height: space(2) }} />
+          <span>Ver todos</span>
+          <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+        </button>
+      </div>
 
       {loading ? (
-        <View style={{ gap: space(4), paddingVertical: space(3) }}>
+        <div className="flex flex-col gap-4 py-3">
           {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: space(3) }}
-            >
+            <div key={i} className="flex items-center gap-3">
               <Skeleton width={44} height={44} radius={22} />
-              <View style={{ flex: 1, gap: 8 }}>
+              <div className="flex-1 space-y-2">
                 <Skeleton width="55%" height={14} />
                 <Skeleton width="35%" height={11} />
-              </View>
+              </div>
               <Skeleton width={82} height={16} />
-            </View>
+            </div>
           ))}
-        </View>
+        </div>
       ) : transactions.length === 0 ? (
-        <View style={{ alignItems: 'center', paddingVertical: space(8) }}>
-          <Txt variant="h3" color={BRAND.ink} align="center">
-            Aun no tienes movimientos
-          </Txt>
-          <View style={{ height: space(2) }} />
-          <Txt variant="small" color={BRAND.mutedDark} align="center">
-            Registra tu primer ingreso o gasto para comenzar.
-          </Txt>
-          <View style={{ height: space(4) }} />
+        <div className="text-center py-8">
+          <p className="text-base font-bold" style={{ color: BRAND.ink }}>
+            Aún no tienes movimientos registrados
+          </p>
+          <p className="text-xs mt-1 mb-4" style={{ color: BRAND.mutedDark }}>
+            Registra tu primer ingreso o gasto para comenzar tu seguimiento.
+          </p>
           <Button label="Registrar movimiento" size="sm" onPress={onRegister} />
-        </View>
+        </div>
       ) : (
-        transactions.map((tx, i) => (
-          <TransactionRowItem
-            key={tx.id}
-            tx={tx}
-            last={i === transactions.length - 1}
-            onPress={() => onOpen(tx)}
-          />
-        ))
+        <div className="divide-y divide-gray-200/70">
+          {transactions.map((tx) => {
+            const Icon = iconoPara(tx);
+            const entra = tx.type === 'income';
+            const neutro = tx.type === 'goal_deposit' || tx.type === 'transfer';
+            const signo = entra ? '+' : neutro ? '' : '−';
+            const colorValor = entra
+              ? BRAND.turquoiseDark
+              : neutro
+                ? BRAND.ink
+                : BRAND.coral;
+            const fondoIcono = entra
+              ? BRAND.paleTurquoise
+              : neutro
+                ? BRAND.paleYellow
+                : BRAND.paleCoral;
+            const colorIcono = entra
+              ? BRAND.turquoiseDark
+              : neutro
+                ? '#B8880A'
+                : BRAND.coral;
+
+            return (
+              <div
+                key={tx.id}
+                onClick={() => onOpen(tx)}
+                className="flex items-center gap-3 py-3.5 transition-all hover:bg-black/5 active:scale-[0.99] cursor-pointer rounded-xl px-2"
+              >
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: fondoIcono, color: colorIcono }}
+                >
+                  <Icon className="w-5 h-5 stroke-[2.2]" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <span className="block text-sm font-bold truncate" style={{ color: BRAND.ink }}>
+                    {tituloDe(tx)}
+                  </span>
+                  <span className="block text-xs truncate" style={{ color: BRAND.mutedDark }}>
+                    {subtituloDe(tx)}
+                  </span>
+                </div>
+
+                <div className="text-base font-black shrink-0 tracking-tight" style={{ color: colorValor }}>
+                  {signo}
+                  {money(tx.amount)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {children ? (
-        <>
-          <View style={{ height: space(5) }} />
-          {children}
-        </>
-      ) : null}
-    </View>
+      {children ? <div className="mt-6">{children}</div> : null}
+    </div>
   );
 }

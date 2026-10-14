@@ -1,342 +1,200 @@
-import React, { useCallback, useState } from 'react';
-import { View } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/theme';
+import React, { useCallback, useState, useEffect } from 'react';
+import { useTheme, BRAND } from '@/theme';
 import {
   Badge,
   Button,
   Card,
   EmptyState,
   ProgressBar,
-  Row,
-  Screen,
-  SectionTitle,
   Spacer,
   Txt,
 } from '@/components/ui';
 import { listGoals, type GoalProgress } from '@/db/repositories/goals';
 import { listInvestments } from '@/db/repositories/investments';
 import { useAppStore } from '@/store/useAppStore';
-import { buildSavingsPlan, FREQUENCY_LABEL } from '@/domain/savings/plan';
-import { useCapacity } from './useCapacity';
 import { money, pct } from '@/utils/money';
-import { format, parseISO } from '@/utils/date';
-import { es } from 'date-fns/locale';
+import { Plus, PiggyBank, ShieldCheck, Target, ArrowRight } from 'lucide-react';
 import type { InvestmentProgress } from '@/db/types';
-import type { RootNav } from '@/app/navigation/types';
 
-/**
- * AHORRO
- * Metas con proposito, su progreso y cuanto conviene aportar.
- * (La comparacion "ahorro o pago deuda" se saco de aqui: los pagos de
- * deuda viven en su propia seccion.)
- */
-export function SavingsScreen() {
+export function SavingsScreen({
+  onNavigate,
+}: {
+  onNavigate: (route: string, params?: Record<string, unknown>) => void;
+}) {
   const t = useTheme();
-  const insets = useSafeAreaInsets();
-  const nav = useNavigation<RootNav>();
   const { refresh, total, netWorth, availableReal } = useAppStore();
-  const capacity = useCapacity();
 
   const [goals, setGoals] = useState<GoalProgress[]>([]);
   const [invs, setInvs] = useState<InvestmentProgress[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [g, i] = await Promise.all([listGoals('all'), listInvestments()]);
-    setGoals(g);
-    setInvs(i);
+    try {
+      setLoading(true);
+      const [g, i] = await Promise.all([listGoals('all'), listInvestments()]);
+      setGoals(g);
+      setInvs(i);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-      refresh();
-    }, [load, refresh]),
-  );
+  useEffect(() => {
+    load();
+    refresh();
+  }, [load, refresh]);
 
   const activas = goals.filter((g) => g.status === 'active');
   const ahorrado = goals.reduce((a, g) => a + g.saved, 0);
   const objetivo = activas.reduce((a, g) => a + g.target_amount, 0);
   const invertido = invs.reduce((a, i) => a + i.balance, 0);
-  const colchonObjetivo = capacity.basicNeeds || capacity.avgDailyExpense * 30;
-  const colchonActual = Math.max(0, Math.min(total, availableReal || total));
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top + t.space(2) }}>
-      <Screen>
-        <Txt variant="h2">Ahorro</Txt>
-        <Spacer h={1} />
-        <Txt variant="small" muted>
-          Tu patrimonio, tu colchón y tus metas en un solo lugar.
-        </Txt>
+    <div className="w-full flex flex-col min-h-screen px-4 sm:px-6 py-6 pb-28 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <span className="block text-[11px] font-extrabold uppercase tracking-wider" style={{ color: t.primary }}>
+            TU FUTURO FINANCIERO
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: t.text }}>
+            Ahorro y metas
+          </h1>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate('goalForm')}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all hover:opacity-90 active:scale-95 shadow-sm cursor-pointer"
+          style={{ backgroundColor: t.primary, color: t.onPrimary }}
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Nueva meta</span>
+        </button>
+      </div>
 
-        {/* VISTA GENERAL DE AHORRO */}
-        <Spacer h={4} />
-        <Card tone="primary" glass>
-          <Txt variant="tiny" faint weight="700">
-            PATRIMONIO NETO
-          </Txt>
-          <Spacer h={1} />
-          <Txt variant="h1" numberOfLines={1}>
-            {money(netWorth)}
-          </Txt>
-          <Spacer h={3} />
-          <Row justify="space-between" gap={3}>
-            <View style={{ flex: 1 }}>
-              <Txt variant="tiny" faint>
-                Dinero líquido
-              </Txt>
-              <Txt variant="body" weight="700" numberOfLines={1}>
-                {money(total)}
-              </Txt>
-            </View>
-            <View style={{ flex: 1, alignItems: 'flex-end' }}>
-              <Txt variant="tiny" faint>
-                Inversiones
-              </Txt>
-              <Txt variant="body" weight="700" numberOfLines={1}>
-                {money(invertido)}
-              </Txt>
-            </View>
-          </Row>
-        </Card>
+      {/* Tarjeta de Patrimonio y Ahorro */}
+      <Card tone="primary" glass className="mb-5 p-5 sm:p-6">
+        <span className="text-xs font-bold uppercase tracking-wider block mb-1" style={{ color: t.textFaint }}>
+          PATRIMONIO NETO
+        </span>
+        <div className="text-3xl sm:text-4xl font-black tracking-tight" style={{ color: t.text }}>
+          {money(netWorth)}
+        </div>
 
-        <Spacer h={3} />
-        <Card tone="alt">
-          <Row justify="space-between" align="flex-start" gap={2}>
-            <View style={{ flex: 1 }}>
-              <Txt variant="h3">Fondo de emergencia</Txt>
-              <Txt variant="small" muted>
-                Disponible para tus imprevistos, sin contar metas ni inversiones.
-              </Txt>
-            </View>
-            <Badge label={colchonObjetivo > 0 ? `${Math.round((colchonActual / colchonObjetivo) * 100)}%` : 'Por definir'} tone="ok" />
-          </Row>
-          <Spacer h={3} />
-          <ProgressBar value={pct(colchonActual, colchonObjetivo)} height={9} />
-          <Spacer h={2} />
-          <Row justify="space-between">
-            <Txt variant="tiny" faint>
-              Tienes {money(colchonActual)}
-            </Txt>
-            <Txt variant="tiny" faint>
-              Objetivo {colchonObjetivo > 0 ? money(colchonObjetivo) : 'por definir'}
-            </Txt>
-          </Row>
-        </Card>
+        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t" style={{ borderColor: t.border }}>
+          <div>
+            <span className="text-xs font-semibold block" style={{ color: t.textFaint }}>
+              Dinero líquido
+            </span>
+            <span className="text-lg font-bold block" style={{ color: t.text }}>
+              {money(total)}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-xs font-semibold block" style={{ color: t.textFaint }}>
+              En metas de ahorro
+            </span>
+            <span className="text-lg font-bold block" style={{ color: t.primary }}>
+              {money(ahorrado)}
+            </span>
+          </div>
+        </div>
+      </Card>
 
-        {/* RESUMEN */}
-        <Spacer h={4} />
-        <Card glass>
-          <Txt variant="tiny" faint weight="700">
-            TOTAL AHORRADO
-          </Txt>
-          <Spacer h={1} />
-          <Txt variant="h1" numberOfLines={1}>
-            {money(ahorrado + invertido)}
-          </Txt>
-          {objetivo > 0 ? (
-            <>
-              <Spacer h={3} />
-              <ProgressBar value={pct(ahorrado, objetivo)} height={10} />
-              <Spacer h={2} />
-              <Row justify="space-between">
-                <Txt variant="tiny" faint>
-                  En metas {money(ahorrado)}
-                </Txt>
-                <Txt variant="tiny" faint>
-                  Objetivo {money(objetivo)}
-                </Txt>
-              </Row>
-            </>
-          ) : null}
-          {invertido > 0 ? (
-            <>
-              <Spacer h={2} />
-              <Txt variant="tiny" faint>
-                Incluye {money(invertido)} en vehiculos de inversion.
-              </Txt>
-            </>
-          ) : null}
-        </Card>
+      {/* Lista de Metas */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold" style={{ color: t.text }}>
+            Metas activas ({activas.length})
+          </h2>
+          <span className="text-xs font-bold" style={{ color: t.textMuted }}>
+            Total objetivo: {money(objetivo)}
+          </span>
+        </div>
 
-        {/* METAS */}
-        <Spacer h={6} />
-        <SectionTitle title={`Mis metas (${activas.length})`} />
-
-        {goals.length ? (
-          goals.map((g) => {
-            const avance = pct(g.saved, g.target_amount);
-            const plan = buildSavingsPlan({
-              remaining: g.remaining,
-              targetDate: g.target_date,
-              frequency: g.frequency,
-              capacity,
-            });
-            const cumplida = g.status === 'done' || g.remaining <= 0;
-
-            return (
-              <Card
-                key={g.id}
-                style={{ marginBottom: t.space(3) }}
-                onPress={() => nav.navigate('GoalDetail', { goalId: g.id })}
-              >
-                <Row justify="space-between" align="flex-start" gap={2}>
-                  <View style={{ flex: 1 }}>
-                    <Txt variant="h3" numberOfLines={1}>
-                      {g.name}
-                    </Txt>
-                    {g.purpose ? (
-                      <>
-                        <Spacer h={1} />
-                        <Txt variant="tiny" faint numberOfLines={1}>
-                          {g.purpose}
-                        </Txt>
-                      </>
-                    ) : null}
-                  </View>
-                  {cumplida ? (
-                    <Badge label="cumplida" tone="ok" />
-                  ) : g.target_date ? (
-                    <Badge
-                      label={format(parseISO(g.target_date), "d LLL yy", { locale: es })}
-                      tone="warn"
-                    />
-                  ) : null}
-                </Row>
-
-                <Spacer h={3} />
-                <Row justify="space-between" align="flex-end" gap={2}>
-                  <View>
-                    <Txt variant="tiny" faint>
-                      Llevas
-                    </Txt>
-                    <Txt variant="h2" numberOfLines={1}>
-                      {money(g.saved)}
-                    </Txt>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Txt variant="tiny" faint>
-                      Meta
-                    </Txt>
-                    <Txt variant="body" weight="700" numberOfLines={1}>
-                      {money(g.target_amount)}
-                    </Txt>
-                  </View>
-                </Row>
-
-                <Spacer h={3} />
-                <ProgressBar
-                  value={avance}
-                  color={cumplida ? t.primary : g.color}
-                  height={10}
-                />
-                <Spacer h={2} />
-                <Row justify="space-between">
-                  <Txt variant="tiny" faint>
-                    {avance.toFixed(0)}% completado
-                  </Txt>
-                  {!cumplida ? (
-                    <Txt variant="tiny" faint>
-                      Faltan {money(g.remaining)}
-                    </Txt>
-                  ) : null}
-                </Row>
-
-                {/* Recomendacion de aporte */}
-                {!cumplida ? (
-                  <>
-                    <Spacer h={3} />
-                    <View
-                      style={{
-                        backgroundColor: t.primarySoft,
-                        borderRadius: t.radius.md,
-                        padding: t.space(3),
-                      }}
-                    >
-                      <Txt variant="small" weight="700">
-                        {plan.headline}
-                      </Txt>
-                      <Spacer h={1} />
-                      <Txt variant="tiny" muted>
-                        {plan.detail}
-                      </Txt>
-                      {plan.isEstimate && !plan.needsMoreData ? (
-                        <>
-                          <Spacer h={1.5} />
-                          <Txt variant="tiny" faint>
-                            Estimado con tu gasto promedio. Ajustalo en Ajustes {'>'}{' '}
-                            gastos basicos.
-                          </Txt>
-                        </>
-                      ) : null}
-                    </View>
-                  </>
-                ) : null}
-
-                <Spacer h={3} />
-                <Row gap={2}>
-                  <Button
-                    label="Aportar"
-                    size="sm"
-                    style={{ flex: 1 }}
-                    onPress={() => nav.navigate('GoalDetail', { goalId: g.id })}
-                  />
-                  <Button
-                    label="Editar"
-                    tone="ghost"
-                    size="sm"
-                    onPress={() => nav.navigate('GoalForm', { goalId: g.id })}
-                  />
-                </Row>
-              </Card>
-            );
-          })
-        ) : (
+        {loading ? (
+          <div className="p-8 text-center text-sm" style={{ color: t.textMuted }}>Cargando metas...</div>
+        ) : activas.length === 0 ? (
           <EmptyState
-            title="Aun no tienes metas"
-            subtitle="Crea una con un proposito claro: un viaje, el fondo de emergencia, un computador. Te digo cuanto aportar por quincena o por mes."
+            title="Aún no tienes metas de ahorro"
+            subtitle="Ponle nombre y fecha a lo que sueñas (ej. Fondo de emergencia, vacaciones, moto)."
             cta="Crear mi primera meta"
-            onCta={() => nav.navigate('GoalForm', {})}
+            onCta={() => onNavigate('goalForm')}
           />
-        )}
-
-        <Spacer h={4} />
-        <Button label="+ Nueva meta" onPress={() => nav.navigate('GoalForm', {})} />
-
-        {/* INVERSIONES (se conserva, pero ya no es el centro de la pantalla) */}
-        <Spacer h={6} />
-        <SectionTitle
-          title="Inversiones"
-          action="Ver todo"
-          onAction={() => nav.navigate('Investments')}
-        />
-        {invs.length ? (
-          <Card onPress={() => nav.navigate('Investments')}>
-            <Row justify="space-between">
-              <View style={{ flex: 1 }}>
-                <Txt variant="body">
-                  {invs.length} vehiculo{invs.length > 1 ? 's' : ''}
-                </Txt>
-                <Txt variant="tiny" faint>
-                  CDT, fondos, cuentas de ahorro
-                </Txt>
-              </View>
-              <Txt variant="h3" numberOfLines={1}>
-                {money(invertido)}
-              </Txt>
-            </Row>
-          </Card>
         ) : (
-          <Card tone="alt" onPress={() => nav.navigate('Investments')}>
-            <Txt variant="small" muted>
-              Registra un CDT, un fondo o tu cuenta de ahorros para proyectar
-              cuanto crecera tu plata.
-            </Txt>
-          </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {activas.map((g) => {
+              const porcentaje = pct(g.saved, g.target_amount);
+              return (
+                <div
+                  key={g.id}
+                  onClick={() => onNavigate('goalDetail', { goalId: g.id })}
+                  className="rounded-2xl p-4 sm:p-5 border transition-all duration-150 cursor-pointer hover:scale-[1.01] active:scale-98 shadow-sm flex flex-col justify-between"
+                  style={{
+                    backgroundColor: t.card,
+                    borderColor: t.border,
+                  }}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{g.emoji || '🎯'}</span>
+                        <span className="text-base font-bold truncate" style={{ color: t.text }}>
+                          {g.name}
+                        </span>
+                      </div>
+                      <Badge label={`${Math.round(porcentaje)}%`} tone="ok" />
+                    </div>
+
+                    <div className="flex items-baseline justify-between mb-3">
+                      <div>
+                        <span className="text-xs block" style={{ color: t.textFaint }}>Ahorrado</span>
+                        <span className="text-xl font-black" style={{ color: t.primary }}>
+                          {money(g.saved)}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs block" style={{ color: t.textFaint }}>Meta</span>
+                        <span className="text-sm font-bold" style={{ color: t.textMuted }}>
+                          {money(g.target_amount)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <ProgressBar value={porcentaje} color={g.color || t.primary} />
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs font-semibold" style={{ borderColor: t.border }}>
+                    <span style={{ color: t.textFaint }}>
+                      Faltan {money(g.remaining)}
+                    </span>
+                    <span className="flex items-center gap-1" style={{ color: t.primary }}>
+                      <span>Detalles</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
-      </Screen>
-    </View>
+      </div>
+
+      {/* Colchón de tranquilidad */}
+      <Card tone="alt" className="p-4 sm:p-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: t.primarySoft, color: t.primary }}>
+            <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold" style={{ color: t.text }}>
+              Fondo de tranquilidad
+            </h3>
+            <p className="text-xs leading-relaxed" style={{ color: t.textMuted }}>
+              Tener entre 1 y 3 meses de tus gastos fijos en reserva te protege ante cualquier imprevisto sin endeudarte.
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }

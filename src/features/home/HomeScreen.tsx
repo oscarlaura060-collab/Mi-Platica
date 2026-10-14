@@ -1,9 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
-import { BRAND, space } from '@/theme/tokens';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
+import { BRAND } from '@/theme/tokens';
 import { ErrorState } from '@/components/ErrorState';
 import { useAppStore } from '@/store/useAppStore';
 import { setSetting } from '@/db/repositories/settings';
@@ -16,21 +12,13 @@ import { CoachAdviceCard } from './components/CoachAdviceCard';
 import { AccountsCarousel } from './components/AccountsCarousel';
 import { RecentActivityPanel } from './components/RecentActivityPanel';
 import { CoachMoodCard, type Mood } from './components/CoachMoodCard';
-import type { RootNav } from '@/app/navigation/types';
+import type { AccountBalance, TransactionRow } from '@/db/types';
 
-/**
- * INICIO — Ola Financiera (Stitch v4)
- *
- * 1. Quien eres + accesos rápidos
- * 2. Cifra protagonista: Disponible real después de compromisos
- * 3. Siguiente paso: + Ingreso / - Gasto
- * 4. Orientación sin culpa: Consejo del Coach
- * 5. Tus cuentas
- * 6. Tus movimientos recientes y ánimo
- */
-export function HomeScreen() {
-  const insets = useSafeAreaInsets();
-  const nav = useNavigation<RootNav>();
+export function HomeScreen({
+  onNavigate,
+}: {
+  onNavigate: (route: string, params?: Record<string, unknown>) => void;
+}) {
   const {
     ready,
     accounts,
@@ -49,21 +37,18 @@ export function HomeScreen() {
   } = useAppStore();
 
   const [error, setError] = useState<string | null>(null);
-  const [recargando, setRecargando] = useState(false);
-  const avisoPospuestoHasta = React.useRef(0);
+  const avisoPospuestoHasta = useRef(0);
 
   const revisarIngresoFijo = useCallback(async () => {
     if (Date.now() < avisoPospuestoHasta.current) return;
     const pendientes = await pendingFixedIncomesDue();
     if (!pendientes.length) return;
-    // Evita duplicados entre el temporizador y el retorno a Inicio.
     avisoPospuestoHasta.current = Date.now() + 6 * 60 * 60 * 1000;
     const f = pendientes[0];
-    Alert.alert(`¿Ya recibiste ${f.name}?`, `Ingreso fijo de ${money(f.amount)}.`, [
-      { text: 'Después', style: 'cancel' },
-      { text: 'Sí, registrar ingreso', onPress: () => nav.navigate('FixedIncomes') },
-    ]);
-  }, [nav]);
+    if (window.confirm(`¿Ya recibiste ${f.name}?\nIngreso fijo programado de ${money(f.amount)}.\n\n¿Quieres registrarlo ahora?`)) {
+      onNavigate('fixedIncomes');
+    }
+  }, [onNavigate]);
 
   const cargar = useCallback(async () => {
     try {
@@ -75,172 +60,109 @@ export function HomeScreen() {
     }
   }, [refresh, revisarIngresoFijo]);
 
-  useFocusEffect(
-    useCallback(() => {
-      cargar();
-    }, [cargar]),
-  );
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
 
-  React.useEffect(() => {
-    if (!ready) return;
-    const timer = setInterval(() => {
-      void revisarIngresoFijo().catch(() => undefined);
-    }, 60_000);
-    return () => clearInterval(timer);
-  }, [ready, revisarIngresoFijo]);
-
-  // ---- Animo del dia -------------------------------------------------
+  // Animo del dia
   const moodGuardado =
     settings.mood_date === dayKey() ? (settings.mood_value as Mood) || null : null;
   const [mood, setMood] = useState<Mood | null>(moodGuardado);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMood(moodGuardado);
   }, [moodGuardado]);
 
-  async function elegirMood(m: Mood) {
+  const guardarMood = async (m: Mood) => {
     setMood(m);
-    Haptics.selectionAsync().catch(() => undefined);
     await setSetting('mood_value', m);
     await setSetting('mood_date', dayKey());
-    await refresh();
-  }
+  };
 
-  // ---- Textos --------------------------------------------------------
-  const nombre = (settings.user_name ?? '').trim();
+  const nombre = (settings.user_name ?? 'Amigo').trim() || 'Amigo';
   const hora = new Date().getHours();
   const saludo =
-    hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+    hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
 
-  const apoyo =
-    mood === 'worried'
-      ? 'Vamos paso a paso, tú puedes.'
-      : mood === 'neutral'
-        ? 'Vas construyendo. Un paso a la vez.'
-        : mood === 'good'
-          ? 'Qué bueno. Sigamos así.'
-          : 'Vamos paso a paso, tú puedes.';
+  const saldoAMostrar = primaryAccount ? primaryAccount.balance : availableReal;
+  const nombreCuentaHero = primaryAccount ? primaryAccount.name : null;
 
-  const hayCompromisos = availableReal !== total;
-  const montoPrincipal = hayCompromisos ? availableReal : total;
-  const leyenda = hayCompromisos
-    ? 'Libre para ti después de cubrir compromisos'
-    : primaryAccount && accounts.length > 1
-      ? `De ${accounts.length} cuentas activas`
-      : 'Disponible hoy';
+  const subtituloHero = primaryAccount
+    ? `Saldo de tu cuenta principal (${primaryAccount.name}).`
+    : fixedPending > 0
+      ? `Saldo total ${money(total)} menos gastos fijos pendientes (${money(fixedPending)}).`
+      : fixedMonthly > 0
+        ? `Gastos fijos del mes cubiertos (${money(fixedMonthly)}).`
+        : 'Tus cuentas menos compromisos.';
 
-  const cargando = !ready || recargando;
+  const isDark = themePref === 'dark';
 
   return (
-    <View style={{ flex: 1, backgroundColor: BRAND.navy }}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: insets.bottom + space(26) }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={recargando}
-            onRefresh={async () => {
-              setRecargando(true);
-              await cargar();
-              setRecargando(false);
-            }}
-            tintColor={BRAND.turquoise}
-          />
-        }
+    <div className="w-full flex flex-col min-h-screen">
+      {/* 1. Header oscuro */}
+      <div className="px-4 sm:px-6 pt-4 pb-2" style={{ backgroundColor: BRAND.navy }}>
+        <HomeHeader
+          greeting={saludo}
+          name={nombre}
+          hasAlerts={detectedPending > 0}
+          onNotifications={() => onNavigate('notifications')}
+          onSettings={() => onNavigate('settings')}
+          onToggleTheme={() => setTheme(isDark ? 'light' : 'dark')}
+          isDark={isDark}
+        />
+      </div>
+
+      {error ? (
+        <div className="p-4">
+          <ErrorState message={error} onRetry={cargar} />
+        </div>
+      ) : null}
+
+      {/* 2. Cuerpo del Inicio en Navy */}
+      <div className="px-4 sm:px-6 py-4 space-y-6 flex-1" style={{ backgroundColor: BRAND.navy }}>
+        {/* Héroe de Disponible */}
+        <BalanceSummary
+          amount={saldoAMostrar}
+          loading={!ready}
+          caption={subtituloHero}
+          accountName={nombreCuentaHero}
+          commitmentsCovered={fixedPending === 0}
+          commitmentsAmount={fixedMonthly}
+          onIncome={() => onNavigate('quickAdd', { type: 'income' })}
+          onExpense={() => onNavigate('quickAdd', { type: 'expense' })}
+        />
+
+        {/* Carrusel de Cuentas */}
+        <AccountsCarousel
+          accounts={accounts}
+          primaryId={primaryAccount?.id ?? null}
+          loading={!ready}
+          onSeeAll={() => onNavigate('accounts')}
+          onOpen={(a: AccountBalance) => onNavigate('accountDetail', { accountId: a.id })}
+          onCreate={() => onNavigate('accountForm')}
+        />
+
+        {/* Tarjeta reflexiva del Coach */}
+        <CoachAdviceCard
+          advice={advice}
+          onPress={() => onNavigate('coach')}
+        />
+      </div>
+
+      {/* 3. Panel claro de movimientos recientes y estado de animo */}
+      <RecentActivityPanel
+        transactions={recent.slice(0, 8)}
+        loading={!ready}
+        onSeeAll={() => onNavigate('movements')}
+        onOpen={(tx: TransactionRow) => onNavigate('transactionEdit', { txId: tx.id })}
+        onRegister={() => onNavigate('quickAdd')}
       >
-        {/* ---------- ZONA OSCURA (CANOPY) ---------- */}
-        <View
-          style={{
-            paddingTop: insets.top + space(2),
-            paddingHorizontal: space(5),
-            paddingBottom: space(5),
-          }}
-        >
-          <HomeHeader
-            greeting={saludo}
-            name={nombre || 'Hola'}
-            hasAlerts={detectedPending > 0 || advice?.severity === 'block'}
-            onNotifications={() => nav.navigate('Detected')}
-            onSettings={() => nav.navigate('Settings')}
-            onToggleTheme={() => setTheme(themePref === 'dark' ? 'light' : 'dark')}
-            isDark={themePref === 'dark'}
-          />
-
-          <View style={{ height: space(5) }} />
-
-          {/* Héroe: Ola Financiera con cifra protagonista y acciones gemelas */}
-          <BalanceSummary
-            amount={montoPrincipal}
-            caption={leyenda}
-            loading={cargando}
-            commitmentsCovered={fixedPending === 0}
-            commitmentsAmount={fixedMonthly > 0 ? fixedMonthly : undefined}
-            onIncome={() => nav.navigate('QuickAdd', { type: 'income' })}
-            onExpense={() => nav.navigate('QuickAdd', { type: 'expense' })}
-          />
-
-          <View style={{ height: space(3.5) }} />
-
-          {/* Consejo del Coach: reflexivo, sin culpa */}
-          <CoachAdviceCard
-            advice={advice}
-            onPress={() => nav.navigate('Coach')}
-          />
-
-          <View style={{ height: space(5) }} />
-
-          {/* Carrusel de Cuentas */}
-          <AccountsCarousel
-            accounts={accounts}
-            primaryId={primaryAccount?.id ?? null}
-            loading={cargando}
-            onSeeAll={() => nav.navigate('Accounts')}
-            onCreate={() => nav.navigate('AccountForm', {})}
-            onOpen={(a) =>
-              a.type === 'credit_card'
-                ? nav.navigate('CreditCard', { cardId: a.id })
-                : nav.navigate('AccountDetail', { accountId: a.id })
-            }
-          />
-        </View>
-
-        {/* ---------- PANEL CLARO ---------- */}
-        {error ? (
-          <View
-            style={{
-              backgroundColor: BRAND.offWhite,
-              borderTopLeftRadius: 34,
-              borderTopRightRadius: 34,
-              padding: space(5),
-              minHeight: 300,
-            }}
-          >
-            <ErrorState
-              title="No pudimos cargar tus movimientos"
-              message="Puede ser algo pasajero."
-              onRetry={cargar}
-            />
-          </View>
-        ) : (
-          <RecentActivityPanel
-            transactions={recent.slice(0, 5)}
-            loading={cargando}
-            onSeeAll={() => nav.navigate('Movements')}
-            onRegister={() => nav.navigate('QuickAdd', { type: 'expense' })}
-            onOpen={(tx) =>
-              nav.navigate('TransactionEdit', { transactionId: tx.id })
-            }
-          >
-            <CoachMoodCard
-              mood={mood}
-              supportText={apoyo}
-              onSelect={elegirMood}
-              onRecommendations={() => nav.navigate('Coach')}
-            />
-          </RecentActivityPanel>
-        )}
-      </ScrollView>
-    </View>
+        <CoachMoodCard
+          mood={mood}
+          onSelect={guardarMood}
+          onRecommendations={() => onNavigate('coach')}
+        />
+      </RecentActivityPanel>
+    </div>
   );
 }

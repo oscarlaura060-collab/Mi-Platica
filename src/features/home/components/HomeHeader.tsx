@@ -1,9 +1,74 @@
 import React from 'react';
-import { Bell, Moon, Settings, Sun } from 'lucide-react';
-import { BRAND } from '@/theme/tokens';
+import { Image, Pressable, View } from 'react-native';
+import { Bell, Moon, Settings, Sun } from 'lucide-react-native';
+import { BRAND, space } from '@/theme/tokens';
 import { useTheme } from '@/theme';
 import { Txt } from '@/components/ui';
 
+/** El simbolo de la marca, pequeño. Nunca el wordmark en esta pantalla. */
+function BrandMark() {
+  return (
+    <Image
+      source={require('../../../../assets/symbol.png')}
+      style={{ width: 42, height: 42 }}
+      resizeMode="contain"
+      accessibilityLabel="Mi Platica"
+    />
+  );
+}
+
+/** Boton circular del header. Area tactil >= 48x48 con hitSlop. */
+function HeaderButton({
+  onPress,
+  label,
+  children,
+  badge,
+}: {
+  onPress: () => void;
+  label: string;
+  children: React.ReactNode;
+  badge?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={10}
+      style={({ pressed }) => ({
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: pressed ? 'rgba(255,255,255,0.08)' : 'transparent',
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      {children}
+      {badge ? (
+        <View
+          accessibilityElementsHidden
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            width: 9,
+            height: 9,
+            borderRadius: 4.5,
+            backgroundColor: BRAND.coral,
+            borderWidth: 1.5,
+            borderColor: BRAND.navy,
+          }}
+        />
+      ) : null}
+    </Pressable>
+  );
+}
+
+/**
+ * Fila superior: quien usa la app, cambio de tema y accesos rápidos.
+ */
 export function HomeHeader({
   greeting,
   name,
@@ -24,67 +89,52 @@ export function HomeHeader({
   const t = useTheme();
 
   return (
-    <div className="flex items-center gap-3 w-full py-2">
-      {/* Brand logo mark */}
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#14C4D4] to-[#FFD447] flex items-center justify-center font-extrabold text-[#071A2A] text-lg shadow-md shrink-0 select-none">
-        MP
-      </div>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space(2.5),
+      }}
+    >
+      <BrandMark />
 
-      <div className="flex-1 min-w-0">
-        <span
-          className="block text-[11px] font-extrabold uppercase tracking-wider leading-tight"
-          style={{ color: BRAND.mutedLight }}
-        >
-          {greeting}
-        </span>
-        <h1
-          className="text-xl sm:text-2xl font-black tracking-tight truncate leading-tight"
-          style={{ color: BRAND.onSurface }}
-        >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Txt variant="tiny" color={BRAND.mutedLight} weight="600" style={{ letterSpacing: 0.3 }}>
+          {greeting.toUpperCase()}
+        </Txt>
+        <Txt variant="h2" color={BRAND.onSurface} weight="800" numberOfLines={1}>
           {name}
-        </h1>
-      </div>
+        </Txt>
+      </View>
 
-      <div className="flex items-center gap-1.5 shrink-0">
-        {onToggleTheme ? (
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-95 cursor-pointer"
-          >
-            {isDark ? (
-              <Sun className="w-5 h-5" style={{ color: BRAND.yellow }} />
-            ) : (
-              <Moon className="w-5 h-5" style={{ color: BRAND.onSurface }} />
-            )}
-          </button>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={onNotifications}
-          aria-label="Notificaciones"
-          className="relative w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-95 cursor-pointer"
+      {onToggleTheme ? (
+        <HeaderButton
+          onPress={onToggleTheme}
+          label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
         >
-          <Bell className="w-5 h-5" style={{ color: BRAND.onSurface }} />
-          {hasAlerts ? (
-            <span
-              className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full ring-2 ring-[#071A2A]"
-              style={{ backgroundColor: BRAND.coral }}
-            />
-          ) : null}
-        </button>
+          {isDark ? (
+            <Sun size={22} color={BRAND.yellow} strokeWidth={2.2} />
+          ) : (
+            <Moon size={22} color={BRAND.onSurface} strokeWidth={2.2} />
+          )}
+        </HeaderButton>
+      ) : null}
 
-        <button
-          type="button"
-          onClick={onSettings}
-          aria-label="Ajustes"
-          className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-95 cursor-pointer"
-        >
-          <Settings className="w-5 h-5" style={{ color: BRAND.onSurface }} />
-        </button>
-      </div>
-    </div>
+      <HeaderButton
+        onPress={onNotifications}
+        label={
+          hasAlerts
+            ? 'Notificaciones, tienes avisos pendientes'
+            : 'Notificaciones'
+        }
+        badge={hasAlerts}
+      >
+        <Bell size={22} color={BRAND.onSurface} strokeWidth={2.2} />
+      </HeaderButton>
+
+      <HeaderButton onPress={onSettings} label="Ajustes">
+        <Settings size={22} color={BRAND.onSurface} strokeWidth={2.2} />
+      </HeaderButton>
+    </View>
   );
 }

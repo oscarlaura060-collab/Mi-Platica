@@ -1,6 +1,9 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
-import { BRAND } from '@/theme/tokens';
+import { Pressable, View, useWindowDimensions } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
+import { BRAND, radius, space } from '@/theme/tokens';
+import { useTheme } from '@/theme';
+import { Txt } from '@/components/ui';
 
 export type Mood = 'worried' | 'neutral' | 'good';
 
@@ -10,82 +13,145 @@ const OPCIONES: { key: Mood; emoji: string; label: string }[] = [
   { key: 'good', emoji: '🙂', label: 'Voy bien' },
 ];
 
+/** El color del borde depende del animo, pero la etiqueta siempre esta. */
 const COLOR: Record<Mood, string> = {
   worried: BRAND.coral,
   neutral: '#B8880A',
   good: BRAND.turquoiseDark,
 };
 
+/**
+ * Coach emocional.
+ *
+ * Preguntar como se siente la persona no es decoracion: dos usuarios con
+ * el mismo saldo pueden estar tranquilos o angustiados, y eso cambia que
+ * consejo sirve. La respuesta NO altera ningun calculo financiero.
+ */
 export function CoachMoodCard({
   mood,
   onSelect,
   onRecommendations,
-  supportText = 'Vamos paso a paso, tú puedes.',
+  supportText = 'Vamos paso a paso, tu puedes.',
 }: {
   mood: Mood | null;
   onSelect: (m: Mood) => void;
   onRecommendations: () => void;
   supportText?: string;
 }) {
+  const t = useTheme();
+  const { width } = useWindowDimensions();
+  // En pantallas angostas el boton baja a su propia fila en vez de
+  // apretar los emojis hasta que no se puedan tocar.
+  const enDosFilas = width < 370;
+
+  const Emojis = (
+    <View style={{ flexDirection: 'row', gap: space(2) }}>
+      {OPCIONES.map((o) => {
+        const activo = mood === o.key;
+        return (
+          <Pressable
+            key={o.key}
+            onPress={() => onSelect(o.key)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: activo }}
+            accessibilityLabel={o.label}
+            style={({ pressed }) => ({
+              minWidth: 56,
+              minHeight: 56,
+              paddingHorizontal: space(2),
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: radius.md,
+              borderWidth: activo ? 2 : 1,
+              borderColor: activo ? COLOR[o.key] : BRAND.borderLight,
+              backgroundColor: activo ? BRAND.white : 'transparent',
+              opacity: pressed ? 0.7 : 1,
+              transform:
+                pressed && !t.reduceMotion ? [{ scale: 0.95 }] : undefined,
+            })}
+          >
+            <Txt style={{ fontSize: 24 }}>{o.emoji}</Txt>
+            {activo ? (
+              // El estado seleccionado se nombra, no solo se colorea.
+              <Txt
+                variant="tiny"
+                color={COLOR[o.key]}
+                weight="700"
+                numberOfLines={1}
+                style={{ marginTop: 2 }}
+              >
+                {o.label}
+              </Txt>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const Boton = (
+    <Pressable
+      onPress={onRecommendations}
+      accessibilityRole="button"
+      accessibilityLabel="Ver recomendaciones del coach"
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        minHeight: 48,
+        paddingHorizontal: space(4),
+        borderRadius: radius.pill,
+        backgroundColor: BRAND.yellow,
+        opacity: pressed ? 0.88 : 1,
+        transform: pressed && !t.reduceMotion ? [{ scale: 0.97 }] : undefined,
+      })}
+    >
+      <Txt variant="body" color={BRAND.navy} weight="800" numberOfLines={1}>
+        Ver recomendaciones
+      </Txt>
+      <ChevronRight size={18} color={BRAND.navy} strokeWidth={2.6} />
+    </Pressable>
+  );
+
   return (
-    <div
-      className="rounded-2xl p-4 sm:p-5 border transition-all"
+    <View
+      accessibilityRole="radiogroup"
       style={{
-        backgroundColor: 'rgba(7,26,42,0.06)',
-        borderColor: BRAND.borderLight,
+        backgroundColor: 'rgba(7,26,42,0.04)',
+        borderRadius: radius.lg,
+        padding: space(4),
       }}
     >
-      <h3 className="text-sm sm:text-base font-bold mb-3" style={{ color: BRAND.ink }}>
-        ¿Cómo te sientes hoy con tu plata?
-      </h3>
+      <Txt variant="body" color={BRAND.ink} weight="700">
+        ¿Como te sientes con tu plata?
+      </Txt>
 
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {OPCIONES.map((o) => {
-            const activo = mood === o.key;
-            return (
-              <button
-                key={o.key}
-                type="button"
-                onClick={() => onSelect(o.key)}
-                className={`flex-1 sm:flex-none min-w-[56px] min-h-[56px] p-2 rounded-xl flex flex-col items-center justify-center border transition-all cursor-pointer ${
-                  activo ? 'bg-white shadow-sm scale-105' : 'bg-transparent hover:bg-black/5 opacity-80'
-                }`}
-                style={{
-                  borderColor: activo ? COLOR[o.key] : BRAND.borderLight,
-                }}
-              >
-                <span className="text-2xl">{o.emoji}</span>
-                {activo ? (
-                  <span
-                    className="text-[10px] font-bold mt-0.5 truncate max-w-[80px]"
-                    style={{ color: COLOR[o.key] }}
-                  >
-                    {o.label}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+      <View style={{ height: space(3) }} />
 
-        <button
-          type="button"
-          onClick={onRecommendations}
-          className="flex items-center justify-center gap-1.5 h-12 px-5 rounded-full font-black text-sm transition-all duration-150 cursor-pointer shadow-md active:scale-95 hover:opacity-90 shrink-0"
+      {enDosFilas ? (
+        <View style={{ gap: space(3) }}>
+          {Emojis}
+          {Boton}
+        </View>
+      ) : (
+        <View
           style={{
-            backgroundColor: BRAND.yellow,
-            color: BRAND.navy,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: space(3),
           }}
         >
-          <span>Ver recomendaciones</span>
-          <ChevronRight className="w-4 h-4 stroke-[2.6]" />
-        </button>
-      </div>
+          {Emojis}
+          <View style={{ flex: 1, minWidth: 0 }}>{Boton}</View>
+        </View>
+      )}
 
-      <p className="text-xs font-medium mt-3" style={{ color: BRAND.mutedDark }}>
+      <View style={{ height: space(3) }} />
+      <Txt variant="small" color={BRAND.mutedDark}>
         {supportText}
-      </p>
-    </div>
+      </Txt>
+    </View>
   );
 }

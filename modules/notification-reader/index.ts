@@ -1,3 +1,6 @@
+import { Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
+
 export interface CapturedNotification {
   key: string;
   package: string;
@@ -6,44 +9,43 @@ export interface CapturedNotification {
   postedAt: number;
 }
 
-let pendingNotifications: CapturedNotification[] = [];
-let detectionEnabled = true;
-
-export const isSupported = true;
-
-export function isEnabled(): boolean {
-  return detectionEnabled;
+interface NativeModule {
+  isEnabled(): boolean;
+  openSettings(): void;
+  getPending(): string;
+  clearPending(): void;
 }
 
-export function setEnabled(enabled: boolean): void {
-  detectionEnabled = enabled;
+// requireOptional: si el modulo nativo no esta (iOS, o un build viejo), la
+// app sigue funcionando sin la deteccion automatica en vez de reventar.
+const native = requireOptionalNativeModule<NativeModule>('NotificationReader');
+
+export const isSupported = Platform.OS === 'android' && native !== null;
+
+export function isEnabled(): boolean {
+  if (!native) return false;
+  try {
+    return native.isEnabled();
+  } catch {
+    return false;
+  }
 }
 
 export function openSettings(): void {
-  // Web settings trigger
+  native?.openSettings();
 }
 
 export function getPending(): CapturedNotification[] {
-  return [...pendingNotifications];
+  if (!native) return [];
+  try {
+    const raw = native.getPending();
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as CapturedNotification[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function clearPending(): void {
-  pendingNotifications = [];
-}
-
-/** Permite simular una notificación de banco colombiano en la web para pruebas */
-export function simulateIncomingNotification(notif: {
-  package: string;
-  title: string;
-  body: string;
-}) {
-  const item: CapturedNotification = {
-    key: 'sim_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-    package: notif.package,
-    title: notif.title,
-    body: notif.body,
-    postedAt: Date.now(),
-  };
-  pendingNotifications.push(item);
-  return item;
+  native?.clearPending();
 }

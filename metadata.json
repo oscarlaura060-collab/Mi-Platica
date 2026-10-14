@@ -1,8 +1,0 @@
-{
-  "name": "Mi Platica",
-  "description": "Aplicación de finanzas personales diseñada para el contexto colombiano (pesos COP, ciclos quincenales y mensuales, cuentas como Nequi, Bancolombia, Daviplata) con Ola Financiera (Stitch v4).",
-  "permissions": [],
-  "capabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

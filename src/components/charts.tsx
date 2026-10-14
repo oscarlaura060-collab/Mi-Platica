@@ -1,9 +1,15 @@
 import React from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useTheme } from '@/theme';
 import { ProgressBar, Row, Spacer, Txt } from './ui';
 import { money, moneyCompact } from '@/utils/money';
 import { prettyDay, shortWeekday } from '@/utils/date';
 
+/**
+ * Barras diarias. Sin librerias de grafica: Views con altura proporcional.
+ * Rapido, cero dependencias y controla el pixel exacto.
+ */
 export function DailyBars({
   data,
   highlightDay,
@@ -19,25 +25,26 @@ export function DailyBars({
   const max = Math.max(...data.map((d) => d.expense), 1);
 
   return (
-    <div className="w-full overflow-x-auto pb-2">
-      <div className="flex items-end gap-2 min-w-max px-1" style={{ height }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height }}>
         {data.map((d) => {
           const isPeak = d.day === highlightDay;
-          const h = Math.max((d.expense / max) * (height - 34), d.expense > 0 ? 6 : 2);
+          const h = Math.max((d.expense / max) * (height - 34), d.expense > 0 ? 4 : 2);
           return (
-            <button
+            <Pressable
               key={d.day}
-              type="button"
-              onClick={() => onSelect?.(d.day)}
-              className="flex flex-col items-center w-7 cursor-pointer group transition-all"
+              onPress={() => onSelect?.(d.day)}
+              style={{ alignItems: 'center', width: 26 }}
             >
-              <span className="text-[10px] font-bold h-4 text-center leading-none" style={{ color: isPeak ? t.danger : t.textFaint }}>
+              <Txt variant="tiny" faint>
                 {isPeak ? moneyCompact(d.expense) : ''}
-              </span>
-              <div
-                className="w-3.5 rounded-full transition-all group-hover:opacity-80"
+              </Txt>
+              <View
                 style={{
+                  width: 14,
                   height: h,
+                  borderRadius: 7,
+                  marginTop: 4,
                   backgroundColor: isPeak
                     ? t.danger
                     : d.expense > 0
@@ -45,17 +52,18 @@ export function DailyBars({
                       : t.border,
                 }}
               />
-              <span className="text-[10px] font-medium mt-1.5" style={{ color: t.textFaint }}>
+              <Txt variant="tiny" faint style={{ marginTop: 6 }}>
                 {d.day.slice(8)}
-              </span>
-            </button>
+              </Txt>
+            </Pressable>
           );
         })}
-      </div>
-    </div>
+      </View>
+    </ScrollView>
   );
 }
 
+/** Dona de distribucion por categoria (react-native-svg). */
 export function Donut({
   slices,
   size = 170,
@@ -76,53 +84,51 @@ export function Donut({
   let offset = 0;
 
   return (
-    <div className="relative flex items-center justify-center mx-auto" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={t.cardAlt}
-          strokeWidth={thickness}
-          fill="none"
-        />
-        {slices.map((s, i) => {
-          const len = (s.value / total) * c;
-          const el = (
-            <circle
-              key={i}
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              stroke={s.color}
-              strokeWidth={thickness}
-              strokeDasharray={`${len} ${c - len}`}
-              strokeDashoffset={-offset}
-              strokeLinecap="butt"
-              fill="none"
-              className="transition-all duration-300"
-            />
-          );
-          offset += len;
-          return el;
-        })}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-2">
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size}>
+        <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke={t.cardAlt}
+            strokeWidth={thickness}
+            fill="none"
+          />
+          {slices.map((s, i) => {
+            const len = (s.value / total) * c;
+            const el = (
+              <Circle
+                key={i}
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                stroke={s.color}
+                strokeWidth={thickness}
+                strokeDasharray={`${len} ${c - len}`}
+                strokeDashoffset={-offset}
+                strokeLinecap="butt"
+                fill="none"
+              />
+            );
+            offset += len;
+            return el;
+          })}
+        </G>
+      </Svg>
+      <View style={{ position: 'absolute', alignItems: 'center' }}>
         {centerTop ? (
-          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: t.textFaint }}>
+          <Txt variant="tiny" faint>
             {centerTop}
-          </span>
+          </Txt>
         ) : null}
-        {centerBottom ? (
-          <span className="text-lg font-bold tracking-tight" style={{ color: t.text }}>
-            {centerBottom}
-          </span>
-        ) : null}
-      </div>
-    </div>
+        {centerBottom ? <Txt variant="h3">{centerBottom}</Txt> : null}
+      </View>
+    </View>
   );
 }
 
+/** Patron semanal: que dia de la semana gastas mas. */
 export function WeekdayPattern({
   data,
 }: {
@@ -134,38 +140,47 @@ export function WeekdayPattern({
   const peak = data.reduce((a, b) => (b.total > (a?.total ?? 0) ? b : a), data[0]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <View style={{ gap: t.space(2) }}>
       {names.map((n, i) => {
         const row = data.find((d) => d.wd === i);
         const v = row?.total ?? 0;
         const isPeak = peak && row?.wd === peak.wd && v > 0;
         return (
-          <div key={n} className="flex items-center gap-2">
-            <span className="w-7 text-[11px] font-bold uppercase tracking-wider" style={{ color: t.textFaint }}>
+          <Row key={n} gap={2}>
+            <Txt variant="tiny" faint style={{ width: 28 }}>
               {n}
-            </span>
-            <div
-              className="flex-1 h-2.5 rounded-full overflow-hidden"
-              style={{ backgroundColor: t.cardAlt }}
+            </Txt>
+            <View
+              style={{
+                flex: 1,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: t.cardAlt,
+                overflow: 'hidden',
+              }}
             >
-              <div
-                className="h-full rounded-full transition-all duration-300"
+              <View
                 style={{
                   width: `${(v / max) * 100}%`,
+                  height: '100%',
                   backgroundColor: isPeak ? t.danger : t.primary,
                 }}
               />
-            </div>
-            <span className="w-20 text-[11px] font-bold text-right" style={{ color: t.textMuted }}>
+            </View>
+            <Txt variant="tiny" muted style={{ width: 74, textAlign: 'right' }}>
               {money(v)}
-            </span>
-          </div>
+            </Txt>
+          </Row>
         );
       })}
-    </div>
+    </View>
   );
 }
 
+/**
+ * Dos barras: ingresos (turquesa) contra gastos (coral). Es la lectura
+ * mas rapida posible de "cuanto entro y cuanto salio".
+ */
 export function TwoBars({
   income,
   expense,
@@ -178,33 +193,53 @@ export function TwoBars({
   const t = useTheme();
   const max = Math.max(income, expense, 1);
 
+  const Fila = ({
+    titulo,
+    valor,
+    color,
+  }: {
+    titulo: string;
+    valor: number;
+    color: string;
+  }) => (
+    <View>
+      <Row justify="space-between" gap={2}>
+        <Txt variant="small" muted>
+          {titulo}
+        </Txt>
+        <Txt variant="body" weight="700" numberOfLines={1} color={color}>
+          {money(valor)}
+        </Txt>
+      </Row>
+      <Spacer h={1.5} />
+      <ProgressBar value={(valor / max) * 100} color={color} height={10} />
+    </View>
+  );
+
   return (
-    <div>
+    <View>
       {label ? (
-        <div className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: t.textFaint }}>
-          {label}
-        </div>
+        <>
+          <Txt variant="tiny" faint weight="700">
+            {label.toUpperCase()}
+          </Txt>
+          <Spacer h={3} />
+        </>
       ) : null}
-
-      <div className="mb-3">
-        <div className="flex justify-between items-center mb-1 text-sm font-semibold">
-          <span style={{ color: t.textMuted }}>Ingresos</span>
-          <span style={{ color: t.primary }}>{money(income)}</span>
-        </div>
-        <ProgressBar value={(income / max) * 100} color={t.primary} height={10} />
-      </div>
-
-      <div>
-        <div className="flex justify-between items-center mb-1 text-sm font-semibold">
-          <span style={{ color: t.textMuted }}>Gastos</span>
-          <span style={{ color: t.danger }}>{money(expense)}</span>
-        </div>
-        <ProgressBar value={(expense / max) * 100} color={t.danger} height={10} />
-      </div>
-    </div>
+      <Fila titulo="Ingresos" valor={income} color={t.primary} />
+      <Spacer h={3} />
+      <Fila titulo="Gastos" valor={expense} color={t.danger} />
+    </View>
   );
 }
 
+/**
+ * Linea de como evoluciona el saldo en el periodo.
+ *
+ * Se reconstruye hacia atras desde el saldo de HOY aplicando los
+ * movimientos de cada dia: asi la curva muestra el saldo real que hubo,
+ * no una suma arbitraria.
+ */
 export function MiniTrend({
   data,
   balance,
@@ -230,7 +265,7 @@ export function MiniTrend({
   if (puntos.length < 2) {
     return (
       <Txt variant="small" muted>
-        Registra algunos movimientos y aquí verás cómo evoluciona tu dinero.
+        Registra algunos movimientos y aqui veras como evoluciona tu dinero.
       </Txt>
     );
   }
@@ -256,16 +291,16 @@ export function MiniTrend({
   const color = subio ? t.primary : t.danger;
 
   return (
-    <div>
-      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={color} stopOpacity="0.28" />
-            <stop offset="1" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#trendFill)" />
-        <path
+    <View>
+      <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={color} stopOpacity="0.28" />
+            <Stop offset="1" stopColor={color} stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+        <Path d={area} fill="url(#trendFill)" />
+        <Path
           d={linea}
           stroke={color}
           strokeWidth={2.5}
@@ -273,22 +308,26 @@ export function MiniTrend({
           strokeLinejoin="round"
           strokeLinecap="round"
         />
-        <circle
+        <Circle
           cx={coords[coords.length - 1].x - 2}
           cy={coords[coords.length - 1].y}
           r={4}
           fill={color}
         />
-      </svg>
+      </Svg>
       <Spacer h={2} />
-      <div className="flex justify-between items-center text-xs font-semibold">
-        <span style={{ color: t.textFaint }}>{prettyDay(puntos[0].day)}</span>
-        <span style={{ color }}>
-          {subio ? 'subió' : 'bajó'} {money(Math.abs(valores[valores.length - 1] - valores[0]))}
-        </span>
-        <span style={{ color: t.textFaint }}>hoy</span>
-      </div>
-    </div>
+      <Row justify="space-between">
+        <Txt variant="tiny" faint>
+          {prettyDay(puntos[0].day)}
+        </Txt>
+        <Txt variant="tiny" color={color} weight="700">
+          {subio ? 'subio' : 'bajo'} {money(Math.abs(valores[valores.length - 1] - valores[0]))}
+        </Txt>
+        <Txt variant="tiny" faint>
+          hoy
+        </Txt>
+      </Row>
+    </View>
   );
 }
 

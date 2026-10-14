@@ -1,45 +1,61 @@
-import React, { CSSProperties } from 'react';
-import { useTheme, BRAND } from '@/theme';
+import React from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Pressable,
+  ScrollView,
+  StyleProp,
+  Text,
+  TextStyle,
+  View,
+  ViewStyle,
+} from 'react-native';
+import { useTheme } from '@/theme';
 
 export function Screen({
   children,
   scroll = true,
   padded = true,
-  className = '',
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   padded?: boolean;
-  className?: string;
 }) {
   const t = useTheme();
+  const style: ViewStyle = {
+    flex: 1,
+    backgroundColor: t.bg,
+    paddingHorizontal: padded ? t.space(5) : 0,
+  };
+  if (!scroll) return <View style={style}>{children}</View>;
   return (
-    <div
-      className={`min-h-full flex-1 flex flex-col ${padded ? 'px-4 sm:px-6' : ''} ${
-        scroll ? 'overflow-y-auto pb-28' : 'overflow-hidden'
-      } ${className}`}
+    <ScrollView
       style={{ backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingHorizontal: padded ? t.space(5) : 0,
+        paddingBottom: t.space(28),
+      }}
+      showsVerticalScrollIndicator={false}
     >
       {children}
-    </div>
+    </ScrollView>
   );
 }
 
 export function Card({
   children,
   style,
-  className = '',
   onPress,
-  onClick,
   tone = 'default',
   glass,
 }: {
   children: React.ReactNode;
-  style?: CSSProperties;
-  className?: string;
+  style?: StyleProp<ViewStyle>;
   onPress?: () => void;
-  onClick?: () => void;
   tone?: 'default' | 'alt' | 'danger' | 'warn' | 'info' | 'primary';
+  /** Superficie "liquid": translucida y con borde claro. Solo para
+   *  tarjetas destacadas o resumenes, nunca para formularios. */
   glass?: boolean;
 }) {
   const t = useTheme();
@@ -51,7 +67,6 @@ export function Card({
     info: t.infoSoft,
     primary: t.primarySoft,
   }[tone];
-
   const border = {
     default: t.border,
     alt: t.border,
@@ -61,61 +76,99 @@ export function Card({
     primary: t.primary,
   }[tone];
 
-  const clickHandler = onPress || onClick;
+  const [pressed, setPressed] = React.useState(false);
+  const Comp: typeof View | typeof Pressable = onPress ? Pressable : View;
 
   return (
-    <div
-      onClick={clickHandler}
-      className={`rounded-2xl transition-all duration-150 p-4 ${
-        clickHandler ? 'cursor-pointer active:scale-[0.99] hover:opacity-95' : ''
-      } ${className}`}
-      style={{
-        backgroundColor: glass ? t.glass : bg,
-        borderWidth: 1,
-        borderColor: glass
-          ? t.glassBorder
-          : tone === 'default' || tone === 'alt'
-            ? border
-            : border + '55',
-        boxShadow: glass || tone === 'default' ? '0 4px 20px -2px rgba(0, 0, 0, 0.25)' : undefined,
-        ...style,
-      }}
+    <Comp
+      onPress={onPress}
+      onPressIn={onPress ? () => setPressed(true) : undefined}
+      onPressOut={onPress ? () => setPressed(false) : undefined}
+      style={[
+        {
+          backgroundColor: glass ? t.glass : bg,
+          borderRadius: glass ? t.radius.xl : t.radius.lg,
+          borderWidth: 1,
+          borderColor: glass
+            ? t.glassBorder
+            : tone === 'default' || tone === 'alt'
+              ? border
+              : border + '55',
+          padding: t.space(4),
+          // Microinteraccion: la tarjeta "cede" un poco al tocarla.
+          transform: pressed && !t.reduceMotion ? [{ scale: 0.985 }] : undefined,
+          opacity: pressed ? 0.95 : 1,
+        },
+        glass || tone === 'default' ? t.shadow : null,
+        style,
+      ]}
     >
       {children}
-    </div>
+    </Comp>
   );
 }
 
+/**
+ * Tarjeta que aparece con un desvanecido corto al montarse. Se usa en las
+ * secciones de las pantallas principales; si el telefono pide reducir
+ * movimiento, aparece de una vez.
+ */
 export function FadeIn({
   children,
-  className = '',
+  delay = 0,
   style,
 }: {
   children: React.ReactNode;
   delay?: number;
-  className?: string;
-  style?: CSSProperties;
+  style?: StyleProp<ViewStyle>;
 }) {
+  const t = useTheme();
+  const anim = React.useRef(new Animated.Value(t.reduceMotion ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    if (t.reduceMotion) {
+      anim.setValue(1);
+      return;
+    }
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 260,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [anim, delay, t.reduceMotion]);
+
   return (
-    <div className={`animate-fade-in ${className}`} style={style}>
+    <Animated.View
+      style={[
+        {
+          opacity: anim,
+          transform: [
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
+          ],
+        },
+        style,
+      ]}
+    >
       {children}
-    </div>
+    </Animated.View>
   );
 }
 
 type TxtProps = {
   children: React.ReactNode;
-  variant?: 'hero' | 'displayCurrency' | 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'tiny';
+  variant?: 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'tiny';
   muted?: boolean;
   faint?: boolean;
   color?: string;
   weight?: '400' | '500' | '600' | '700' | '800';
-  className?: string;
-  style?: CSSProperties;
-  align?: 'left' | 'center' | 'right';
+  style?: StyleProp<TextStyle>;
   numberOfLines?: number;
+  align?: 'left' | 'center' | 'right';
+  /** Para que el lector de pantalla diga "menos 45 mil pesos" y no "-45.000". */
   accessibilityLabel?: string;
-  accessibilityRole?: string;
+  accessibilityRole?: 'header' | 'text' | 'none';
 };
 
 export function Txt({
@@ -125,43 +178,39 @@ export function Txt({
   faint,
   color,
   weight,
-  className = '',
   style,
-  align = 'left',
   numberOfLines,
+  align,
+  accessibilityLabel,
+  accessibilityRole,
 }: TxtProps) {
   const t = useTheme();
-
-  const fontSizes: Record<string, string> = {
-    hero: 'text-4xl sm:text-5xl font-extrabold tracking-tight',
-    displayCurrency: 'text-3xl sm:text-4xl font-extrabold tracking-tight',
-    h1: 'text-2xl sm:text-3xl font-extrabold tracking-tight',
-    h2: 'text-xl sm:text-2xl font-bold tracking-tight',
-    h3: 'text-lg font-semibold',
-    body: 'text-base font-medium',
-    small: 'text-sm font-medium',
-    tiny: 'text-xs font-semibold',
+  const defaultWeight: Record<string, TextStyle['fontWeight']> = {
+    h1: '800',
+    h2: '700',
+    h3: '600',
+    body: '500',
+    small: '500',
+    tiny: '600',
   };
-
-  const weights: Record<string, string> = {
-    '400': 'font-normal',
-    '500': 'font-medium',
-    '600': 'font-semibold',
-    '700': 'font-bold',
-    '800': 'font-extrabold',
-  };
-
-  const textColor = color ?? (faint ? t.textFaint : muted ? t.textMuted : t.text);
-
   return (
-    <div
-      className={`${fontSizes[variant]} ${weight ? weights[weight] : ''} ${
-        align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
-      } ${numberOfLines ? `line-clamp-${numberOfLines}` : ''} ${className}`}
-      style={{ color: textColor, ...style }}
+    <Text
+      numberOfLines={numberOfLines}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
+      style={[
+        {
+          color: color ?? (faint ? t.textFaint : muted ? t.textMuted : t.text),
+          fontSize: t.font[variant],
+          fontWeight: weight ?? defaultWeight[variant],
+          textAlign: align,
+          letterSpacing: variant === 'h1' ? -0.8 : 0,
+        },
+        style,
+      ]}
     >
       {children}
-    </div>
+    </Text>
   );
 }
 
@@ -170,59 +219,48 @@ export function Row({
   gap = 2,
   justify = 'flex-start',
   align = 'center',
-  className = '',
   style,
 }: {
   children: React.ReactNode;
   gap?: number;
-  justify?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around';
-  align?: 'flex-start' | 'center' | 'flex-end' | 'stretch';
-  className?: string;
-  style?: CSSProperties;
+  justify?: ViewStyle['justifyContent'];
+  align?: ViewStyle['alignItems'];
+  style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
   return (
-    <div
-      className={`flex flex-row ${className}`}
-      style={{
-        alignItems: align,
-        justifyContent: justify,
-        gap: t.space(gap),
-        ...style,
-      }}
+    <View
+      style={[
+        { flexDirection: 'row', alignItems: align, justifyContent: justify, gap: t.space(gap) },
+        style,
+      ]}
     >
       {children}
-    </div>
+    </View>
   );
 }
 
 export function Spacer({ h = 4 }: { h?: number }) {
   const t = useTheme();
-  return <div style={{ height: t.space(h) }} aria-hidden="true" />;
+  return <View style={{ height: t.space(h) }} />;
 }
 
 export function Button({
   label,
   onPress,
-  onClick,
   tone = 'primary',
   size = 'md',
   loading,
   disabled,
-  className = '',
   style,
-  icon,
 }: {
   label: string;
   onPress?: () => void;
-  onClick?: () => void;
   tone?: 'primary' | 'ghost' | 'danger' | 'neutral' | 'accent';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  icon?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
   const bg = {
@@ -232,7 +270,6 @@ export function Button({
     danger: t.danger,
     neutral: t.cardAlt,
   }[tone];
-
   const fg = {
     primary: t.onPrimary,
     accent: '#071A2A',
@@ -240,37 +277,37 @@ export function Button({
     danger: '#FFFFFF',
     neutral: t.text,
   }[tone];
-
-  const pads = {
-    sm: 'px-4 py-2 text-sm min-h-[38px]',
-    md: 'px-6 py-2.5 text-base min-h-[46px]',
-    lg: 'px-8 py-3.5 text-lg min-h-[54px]',
-  }[size];
-
-  const clickHandler = onPress || onClick;
+  const pad = { sm: t.space(2), md: t.space(3.5), lg: t.space(4.5) }[size];
+  const minH = { sm: 40, md: 48, lg: 54 }[size];
 
   return (
-    <button
-      type="button"
-      onClick={clickHandler}
+    <Pressable
+      onPress={onPress}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center font-bold rounded-full transition-all duration-150 select-none cursor-pointer ${pads} ${
-        disabled ? 'opacity-40 cursor-not-allowed' : 'active:scale-95 hover:opacity-90'
-      } ${tone === 'ghost' ? 'border' : ''} ${className}`}
-      style={{
-        backgroundColor: bg,
-        color: fg,
-        borderColor: tone === 'ghost' ? t.border : undefined,
-        ...style,
-      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        {
+          backgroundColor: bg,
+          borderRadius: t.radius.pill,
+          paddingVertical: pad,
+          paddingHorizontal: t.space(6),
+          minHeight: minH,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: tone === 'ghost' ? 1.5 : 0,
+          borderColor: t.border,
+          opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
+        },
+        style,
+      ]}
     >
       {loading ? (
-        <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mr-2" />
-      ) : icon ? (
-        <span className="mr-2">{icon}</span>
-      ) : null}
-      <span>{label}</span>
-    </button>
+        <ActivityIndicator color={fg} />
+      ) : (
+        <Text style={{ color: fg, fontWeight: '700', fontSize: 15 }}>{label}</Text>
+      )}
+    </Pressable>
   );
 }
 
@@ -280,37 +317,42 @@ export function Chip({
   active,
   color,
   onPress,
-  onClick,
-  className = '',
 }: {
   label: string;
   emoji?: string | null;
   active?: boolean;
   color?: string;
   onPress?: () => void;
-  onClick?: () => void;
-  className?: string;
 }) {
   const t = useTheme();
   const accent = color ?? t.primary;
-  const clickHandler = onPress || onClick;
-
   return (
-    <button
-      type="button"
-      onClick={clickHandler}
-      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all select-none cursor-pointer border ${
-        active ? 'shadow-sm' : 'opacity-85 hover:opacity-100'
-      } ${className}`}
-      style={{
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: t.space(2.5),
+        paddingHorizontal: t.space(3.5),
+        borderRadius: t.radius.pill,
         backgroundColor: active ? accent + '26' : t.cardAlt,
+        borderWidth: 1,
         borderColor: active ? accent : t.border,
-        color: active ? t.text : t.textMuted,
-      }}
+        opacity: pressed ? 0.8 : 1,
+      })}
     >
-      {emoji ? <span className="text-sm">{emoji}</span> : null}
-      <span>{label}</span>
-    </button>
+      {emoji ? <Text style={{ fontSize: 14 }}>{emoji}</Text> : null}
+      <Text
+        style={{
+          color: active ? t.text : t.textMuted,
+          fontWeight: '600',
+          fontSize: 13,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -324,35 +366,53 @@ export function ProgressBar({
   height?: number;
 }) {
   const t = useTheme();
-  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  const target = Math.max(0, Math.min(100, value));
+  const anim = React.useRef(new Animated.Value(t.reduceMotion ? target : 0)).current;
+
+  React.useEffect(() => {
+    if (t.reduceMotion) {
+      anim.setValue(target);
+      return;
+    }
+    Animated.timing(anim, {
+      toValue: target,
+      duration: 480,
+      easing: Easing.out(Easing.cubic),
+      // El ancho en % no puede ir por el hilo nativo.
+      useNativeDriver: false,
+    }).start();
+  }, [target, anim, t.reduceMotion]);
 
   return (
-    <div
-      className="w-full rounded-full overflow-hidden"
+    <View
       style={{
         height,
+        borderRadius: height,
         backgroundColor: t.mode === 'dark' ? t.cardAlt : t.border,
+        overflow: 'hidden',
       }}
     >
-      <div
-        className="h-full rounded-full transition-all duration-500 ease-out"
+      <Animated.View
         style={{
-          width: `${clamped}%`,
+          width: anim.interpolate({
+            inputRange: [0, 100],
+            outputRange: ['0%', '100%'],
+          }),
+          height: '100%',
           backgroundColor: color ?? t.primary,
+          borderRadius: height,
         }}
       />
-    </div>
+    </View>
   );
 }
 
 export function Badge({
   label,
   tone = 'neutral',
-  className = '',
 }: {
   label: string;
   tone?: 'neutral' | 'danger' | 'warn' | 'ok' | 'info';
-  className?: string;
 }) {
   const t = useTheme();
   const map = {
@@ -363,14 +423,17 @@ export function Badge({
     info: [t.infoSoft, t.info],
   } as const;
   const [bg, fg] = map[tone];
-
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${className}`}
-      style={{ backgroundColor: bg, color: fg }}
+    <View
+      style={{
+        backgroundColor: bg,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: t.radius.pill,
+      }}
     >
-      {label}
-    </span>
+      <Text style={{ color: fg, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+    </View>
   );
 }
 
@@ -385,19 +448,16 @@ export function SectionTitle({
 }) {
   const t = useTheme();
   return (
-    <div className="flex items-center justify-between mb-3">
+    <Row justify="space-between" style={{ marginBottom: t.space(3) }}>
       <Txt variant="h3">{title}</Txt>
       {action ? (
-        <button
-          type="button"
-          onClick={onAction}
-          className="text-sm font-semibold hover:underline cursor-pointer"
-          style={{ color: t.primary }}
-        >
-          {action}
-        </button>
+        <Pressable onPress={onAction} hitSlop={10}>
+          <Txt variant="small" color={t.primary}>
+            {action}
+          </Txt>
+        </Pressable>
       ) : null}
-    </div>
+    </Row>
   );
 }
 
@@ -414,7 +474,7 @@ export function EmptyState({
 }) {
   const t = useTheme();
   return (
-    <Card tone="alt" className="text-center py-10 px-6">
+    <Card tone="alt" style={{ alignItems: 'center', paddingVertical: t.space(8) }}>
       <Txt variant="h3" align="center">
         {title}
       </Txt>
@@ -427,9 +487,10 @@ export function EmptyState({
         </>
       ) : null}
       {cta ? (
-        <div className="mt-5">
+        <>
+          <Spacer h={4} />
           <Button label={cta} onPress={onCta} size="sm" />
-        </div>
+        </>
       ) : null}
     </Card>
   );

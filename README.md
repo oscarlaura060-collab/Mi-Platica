@@ -1,4 +1,4 @@
-# FinZen — salud financiera y recuperación de deudas (100% local)
+# Mi Platica — salud financiera y recuperación de deudas (100% local)
 
 App móvil React Native (Expo) **offline y privada**: no hay backend, no hay cuenta,
 no hay analítica. Todo vive en un SQLite dentro del almacenamiento privado de la app

@@ -85,6 +85,41 @@ Un PR solo se fusiona si cumple **todo** lo siguiente:
 ## Flujo multi-IA (resumen)
 
 1. **Claude (diseño/arquitectura):** lee el requerimiento y el Figma, redacta el spec en `docs/specs/`.
+   Cierra con: *"🟢 Listo Óscar, especificación terminada. Pásaselo a Codex."*
 2. **Codex (implementación):** toma el spec y entrega el código Flutter (`.dart`) modular.
+   Cierra con: *"🟢 Listo Óscar, código generado. Haz commit/push en GitHub y pásaselo a Grok."*
 3. **Grok / Google (auditoría):** revisa seguridad + fidelidad + rendimiento y emite el reporte QA.
+   Cierra con: *"🟢 Listo Óscar, módulo aprobado. Haz el merge en GitHub y pásale la siguiente pantalla a Claude."*
 4. **Claude (aprobación):** valida implementación + reporte y autoriza el merge a `main`.
+
+---
+
+## Plantilla de entrega Claude → Codex
+
+Claude cierra **cada** spec con este bloque, ya rellenado, para copiar y pegar a Codex.
+Reemplazar `{PANTALLA}`, `{SPEC_PATH}` y `{COMMIT}` según la pantalla.
+
+> **Para Codex 💻 — Pantalla: {PANTALLA} (Mi Platica, Flutter)**
+>
+> Repo: `oscarlaura060-collab/Mi-Platica` · Rama: `claude/sharp-edison-xrhnsx`
+>
+> Eres el desarrollador Flutter. Lee primero, en este orden:
+> 1. `{SPEC_PATH}` — la especificación completa (tokens, skeletons, estados, medidas exactas).
+> 2. `docs/ESTANDARES_EQUIPO.md` — los estándares y el Definition of Done.
+>
+> Si ya hay un borrador en `/app_flutter` (commit `{COMMIT}`), **no empieces de cero**: tómalo como
+> punto de partida, compílalo, verifícalo y complétalo.
+>
+> Tu tarea:
+> 1. Validar que compila: `cd app_flutter && flutter create . && flutter pub get && flutter analyze && flutter test`
+>    (corrige warnings con `dart fix --apply` y `dart format .`).
+> 2. Aplicar los deltas/decisiones anotados al final del spec.
+> 3. Completar stubs (capa de datos real `sqflite`/`drift`, router).
+> 4. Respetar: BLoC/Cubit, skeletons con shimmer sin layout shift, tokens centralizados
+>    (cero colores hardcodeados), accesibilidad (toque ≥48dp, `Semantics`, reduced-motion).
+>
+> Si faltan helpers, validadores o widgets compartidos, créalos. Al terminar, cierra con:
+> **"🟢 Listo Óscar, código generado. Haz commit/push en GitHub y pásaselo a Grok."**
+
+Si Codex no tiene acceso directo al repo, Claude entrega una variante con el contenido del spec
+pegado dentro (autosuficiente).

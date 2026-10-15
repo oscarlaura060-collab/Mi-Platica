@@ -144,13 +144,12 @@ Escala (de `tokens.ts`, en px lógicos / `.sp`):
 | `small` | 13 | w600 | subtítulos, links |
 | `tiny` | 11 | w800 | etiquetas uppercase ("SALDO DISPONIBLE") |
 
-**Fuente — ADICIÓN RECOMENDADA:** la implementación web usa la fuente del sistema en peso 900.
-Para Flutter recomiendo **Hanken Grotesk** (variable, distintiva, excelentes numerales) vía
-`google_fonts`. Es una elección deliberada: evita Inter/Roboto/Plus Jakarta (sobreexpuestas; la
-auditoría del repo ya marcó `Plus Jakarta Sans` como "overused-font"). Codex puede sustituirla,
-pero **debe** respetar: (a) pesos w900 para cifras y títulos, (b) **numerales tabulares**
-(`fontFeatures: [FontFeature.tabularFigures()]`) en todo monto, para que las columnas de dinero
-no bailen.
+**Fuente — DECISIÓN FIRME: Hanken Grotesk** (confirmada por el dueño del producto).
+Variable, distintiva, con excelentes numerales; evita Inter/Roboto/Plus Jakarta (sobreexpuestas;
+la auditoría del repo marcó `Plus Jakarta Sans` como "overused-font"). Se carga vía `google_fonts`
+(`GoogleFonts.hankenGrotesk`). **Obligatorio:** (a) pesos w900 para cifras y títulos, (b) **numerales
+tabulares** (`fontFeatures: [FontFeature.tabularFigures()]`) en todo monto, para que las columnas de
+dinero no bailen. Para fijarla offline, añadir el `.ttf` a `assets/` y declararlo en `pubspec.yaml`.
 
 ### 2.3 Espaciado, radios
 
@@ -249,6 +248,13 @@ Orden interno:
   `"Cupo usado"` (`coral`) en `tiny` w800 uppercase. Trailing: chevron `mutedLight`.
   Color de acento por índice: `[turquoise, yellow, coral]` ciclado, o `account.color` si existe.
 - Tarjeta de crédito: mostrar `max(-balance, 0)` como "Cupo usado".
+- **Límite del carrusel (DECISIÓN):** mostrar como máximo **5 tarjetas** de cuenta. Si hay más de 5,
+  la 5.ª posición se reemplaza por una **tarjeta-resumen "Ver todas (+N)"** (mismo tamaño 256×96,
+  `surfaceLow`, borde `borderDark`): ícono `Icons.grid_view_rounded` en tile turquesa + texto
+  "Ver todas" `small` w700 `white` y "+N cuentas" `tiny` `mutedLight`, que navega a `accounts`.
+  El link "Ver todas →" del encabezado permanece siempre visible. Con ≤5 cuentas se muestran todas
+  sin tarjeta-resumen. Razón: acota la carga cognitiva y el scroll horizontal sin esconder el acceso
+  al listado completo.
 
 ### 3.4 `CoachAdviceCard` (Zona B) — radio `16`, bg `surfaceLow`, **borde amarillo** `0x59FFD447`, sombra `soft`, padding `16`
 Fila: círculo 40×40 (bg `yellow @16%`, borde @32%, ícono sol `yellow` 20px) + columna:
@@ -400,8 +406,12 @@ Marcadas como **[+]**. Algunas ya aparecen en el Figma de estados y solo se form
   Título "No pudimos cargar esto", mensaje "Puede ser algo pasajero.", ícono `warning_amber`.
 - **[+] Pull-to-refresh:** `RefreshIndicator` en el scroll → `cubit.refresh()` (color `turquoise`).
 - **[+] Tooltip aclaratorio:** ícono info 16px junto a "SALDO DISPONIBLE REAL" y a "Compromisos del
-  mes" que explique el cálculo ("saldo total menos compromisos pendientes"). Accesible por tap
-  (no solo hover) con `Tooltip` + semántica.
+  mes". Accesible por **tap** (no solo hover) con `Tooltip(triggerMode: TooltipTriggerMode.tap)` +
+  semántica. **Textos definitivos (DECISIÓN):**
+  - Saldo disponible → *"Es tu saldo total menos los gastos fijos del mes que aún no pagas. Es lo que
+    puedes usar con tranquilidad."*
+  - Compromisos del mes → *"Tus gastos fijos del mes: arriendo, servicios, cuotas. '100% cubiertos'
+    significa que ya los tienes separados o pagados."*
 - **[+] Numerales tabulares** en todo monto (evita saltos de ancho en la columna de dinero).
 - **[+] Reduced motion / accesibilidad:** respetar `MediaQuery.disableAnimations`; `Semantics`
   labels en los 3 botones del header y en cada fila de movimiento; objetivo táctil ≥ 48×48.
@@ -421,6 +431,11 @@ Marcadas como **[+]**. Algunas ya aparecen en el Figma de estados y solo se form
 - [ ] Contraste verificado: montos y textos amarillos sobre claro usan variantes `*Accessible`.
 - [ ] Sin colores hardcodeados; todo desde `AppColors`.
 
-> Dudas de diseño pendientes para el líder (Claude), no asumir: (a) ¿la fuente definitiva es
-> Hanken Grotesk o hay una de marca?; (b) ¿el carrusel de cuentas tiene límite visible antes de
-> "Ver todas"?; (c) textos exactos de los tooltips nuevos.
+> **Decisiones cerradas** (ya no son dudas):
+> (a) Fuente: **Hanken Grotesk**, definitiva (§2.2).
+> (b) Carrusel: **máx. 5 tarjetas**, luego tarjeta-resumen "Ver todas (+N)" (§3.3).
+> (c) Tooltips: textos definitivos de saldo y compromisos (§7).
+>
+> Deltas que Codex debe aplicar al borrador de `/app_flutter` (commit db98119):
+> fijar la fuente, implementar el tope de 5 del carrusel con la tarjeta-resumen, y poner los textos
+> reales en los dos tooltips (hoy el de saldo tiene un placeholder y el de compromisos no existe aún).
